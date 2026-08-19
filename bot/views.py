@@ -225,7 +225,7 @@ def build_welcome_embed(game_server: str) -> discord.Embed:
             "📋 Обычно заявки обрабатываются в течение **1–3 дней** — "
             "срок зависит от загрузки рекрутеров.\n\n"
             "**В форме потребуется указать:**\n"
-            "• игровое имя, фамилию и Static ID\n"
+            "• игровое имя и Static ID\n"
             "• OOC-возраст и цель вступления\n"
             "• как вы узнали о семье\n"
             "• ссылку на скриншот персонажа\n\n"
@@ -338,8 +338,8 @@ class PromotionModal(SafeModal, title="Запрос на повышение"):
         super().__init__()
         self.target = target
         self.character_name = discord.ui.TextInput(
-            label="Игровой никнейм на сервере",
-            placeholder="Имя Фамилия",
+            label="Игровое имя",
+            placeholder="Okuname",
             max_length=128,
             required=True,
         )
@@ -357,7 +357,7 @@ class PromotionModal(SafeModal, title="Запрос на повышение"):
         character_name = self.character_name.value.strip()
         if not character_name:
             await interaction.response.send_message(
-                "❌ Укажите игровой никнейм на выбранном сервере.",
+                "❌ Укажите игровое имя на выбранном сервере.",
                 ephemeral=True,
             )
             return
@@ -501,8 +501,8 @@ class ApplicationModal(SafeModal, title="Заявка в семью Londo"):
         server_name = config["servers"][game_server]["name"]
 
         self.character_name = discord.ui.TextInput(
-            label="Игровое имя и фамилия",
-            placeholder="John Smith",
+            label="Игровое имя",
+            placeholder="Okuname",
             max_length=256,
             required=True,
         )
@@ -546,7 +546,7 @@ class ApplicationModal(SafeModal, title="Заявка в семью Londo"):
 
         if not char_name:
             await interaction.response.send_message(
-                "❌ Укажите игровое имя и фамилию.", ephemeral=True
+                "❌ Укажите игровое имя.", ephemeral=True
             )
             return
         if not static_id:
