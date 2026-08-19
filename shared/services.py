@@ -179,9 +179,11 @@ def get_logs(
     application_id: int | None = None,
     game_server: str | None = None,
     discord_user_id: str | None = None,
-    static_id: str | None = None,
 ) -> list[ActionLog]:
-    """Return action logs. Can filter by application_id, game_server, target discord_user_id or target static_id."""
+    """Return action logs. Can filter by application_id, game_server, or target discord_user_id.
+
+    Static ID is no longer used for searching — searches are performed only by Discord ID.
+    """
     session = get_session_factory()()
     try:
         query = session.query(ActionLog)
@@ -191,19 +193,17 @@ def get_logs(
             query = query.filter(ActionLog.game_server == game_server)
         if discord_user_id:
             query = query.filter(ActionLog.target_discord_user_id == str(discord_user_id))
-        if static_id:
-            query = query.filter(ActionLog.target_static_id == str(static_id))
         return query.order_by(ActionLog.created_at.desc()).all()
     finally:
         session.close()
 
 
-def search_logs(*, discord_user_id: str | None = None, static_id: str | None = None) -> list[ActionLog]:
-    """Convenience search API to find logs by target discord id or static id.
+def search_logs(*, discord_user_id: str | None = None) -> list[ActionLog]:
+    """Convenience search API to find logs by target discord id.
 
-    Pass either discord_user_id, static_id, or both. Returns matching ActionLog rows ordered by newest first.
+    Pass discord_user_id. Returns matching ActionLog rows ordered by newest first.
     """
-    return get_logs(discord_user_id=discord_user_id, static_id=static_id)
+    return get_logs(discord_user_id=discord_user_id)
 
 
 def record_login(discord_user_id: str, discord_username: str, roles: list[int]) -> None:
