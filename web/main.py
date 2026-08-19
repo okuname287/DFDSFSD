@@ -657,7 +657,7 @@ async def web_process_action(request: Request, app_id: int):
 
 
 @app.get("/logs", response_class=HTMLResponse)
-async def logs_page(request: Request, server: str = "all", category: str = "applications"):
+async def logs_page(request: Request, server: str = "all", category: str = "applications", discord_user_id: str | None = None, static_id: str | None = None):
     user = await require_reviewer(request)
     if isinstance(user, RedirectResponse):
         return user
@@ -682,7 +682,15 @@ async def logs_page(request: Request, server: str = "all", category: str = "appl
 
     bot_errors = get_bot_errors() if category == "bot_errors" else []
 
-    all_logs = [log for selected_server in selected_servers for log in get_logs(game_server=selected_server)]
+    # If search params provided, filter logs by target discord id or static id for each selected server
+    if discord_user_id or static_id:
+        all_logs = [
+            log
+            for selected_server in selected_servers
+            for log in get_logs(game_server=selected_server, discord_user_id=discord_user_id, static_id=static_id)
+        ]
+    else:
+        all_logs = [log for selected_server in selected_servers for log in get_logs(game_server=selected_server)]
     stats = {
         "logins": sum(
             get_login_count(config["discord"].get("server_access_roles", {}).get(selected_server, []))
