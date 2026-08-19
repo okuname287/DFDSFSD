@@ -103,6 +103,9 @@ class ActionLog(Base):
     action: Mapped[str] = mapped_column(String(32))
     actor_name: Mapped[str] = mapped_column(String(128))
     actor_id: Mapped[str] = mapped_column(String(32))
+    # Target user fields: discord id and static id of the application being acted upon
+    target_discord_user_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    target_static_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     details: Mapped[str | None] = mapped_column(Text, nullable=True)
     source: Mapped[str] = mapped_column(String(16), default="web")  # web | discord
     game_server: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
@@ -239,6 +242,15 @@ def _migrate_schema():
         if "log_type" not in log_columns:
             conn.exec_driver_sql(
                 "ALTER TABLE action_logs ADD COLUMN log_type VARCHAR(16) DEFAULT 'application'"
+            )
+        # Add new columns for target user info (discord id and static id) so logs can be searched
+        if "target_discord_user_id" not in log_columns:
+            conn.exec_driver_sql(
+                "ALTER TABLE action_logs ADD COLUMN target_discord_user_id VARCHAR(32)"
+            )
+        if "target_static_id" not in log_columns:
+            conn.exec_driver_sql(
+                "ALTER TABLE action_logs ADD COLUMN target_static_id VARCHAR(64)"
             )
 
         application_column = next(
