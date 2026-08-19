@@ -47,6 +47,7 @@ from shared.services import (
     list_site_users,
     set_site_user_approval,
     update_discord_message_id,
+    log_bot_error,
 )
 
 
@@ -268,7 +269,18 @@ async def auth_callback(request: Request, code: str):
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
         if token_resp.status_code != 200:
-            raise HTTPException(status_code=400, detail="OAuth failed")
+            error_data = token_resp.json() if token_resp.content else {}
+            error_code = error_data.get("error", "unknown")
+            error_description = error_data.get("error_description", "")
+            log_bot_error(
+                "oauth_token_exchange",
+                "Discord отклонил обмен OAuth-кода на токен.",
+                f"HTTP {token_resp.status_code}: {error_code} {error_description}".strip(),
+            )
+            raise HTTPException(
+                status_code=400,
+                detail=f"OAuth failed: {error_code}",
+            )
         token_data = token_resp.json()
         access_token = token_data["access_token"]
 

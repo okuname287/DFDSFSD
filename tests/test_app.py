@@ -30,6 +30,42 @@ def test_host_port_overrides_local_web_port(monkeypatch):
     assert config["web"]["port"] == 18432
 
 
+def test_oauth_token_failure_exposes_safe_error_code(monkeypatch):
+    class FailedTokenResponse:
+        status_code = 400
+        content = b'{"error":"invalid_client","error_description":"bad secret"}'
+
+        def json(self):
+            return {"error": "invalid_client", "error_description": "bad secret"}
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def post(self, *args, **kwargs):
+            return FailedTokenResponse()
+
+    monkeypatch.setattr(web_main.httpx, "AsyncClient", lambda: FakeClient())
+    monkeypatch.setattr(web_main, "config", {
+        "web": {
+            "oauth": {
+                "client_id": "client",
+                "client_secret": "secret",
+                "redirect_uri": "https://londo.bothost.tech/auth/callback",
+            }
+        }
+    })
+    monkeypatch.setattr(web_main, "log_bot_error", lambda *args, **kwargs: None)
+
+    response = TestClient(app).get("/auth/callback?code=test-code")
+
+    assert response.status_code == 400
+    assert "invalid_client" in response.json()["detail"]
+
+
 async def fake_current_user(request):
     return {"id": "123", "username": "member", "roles": []}
 
