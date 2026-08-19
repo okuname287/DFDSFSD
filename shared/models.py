@@ -197,60 +197,110 @@ def init_db():
 
 
 def _migrate_schema():
-    """Add new columns to existing SQLite databases."""
+    """Add new columns to existing databases.
+
+    For SQLite we use PRAGMA to inspect and ALTER TABLE; for Postgres and other
+    DBs we perform idempotent ALTER TABLE ... ADD COLUMN IF NOT EXISTS statements
+    and create indexes if missing.
+    """
     engine = get_engine()
-    if engine.dialect.name != "sqlite":
-        return
     with engine.begin() as conn:
-        app_columns = {
-            row[1]
-            for row in conn.exec_driver_sql("PRAGMA table_info(applications)").fetchall()
-        }
-        if "discord_channel_id" not in app_columns:
+        if engine.dialect.name == "sqlite":
+            app_columns = {
+                row[1]
+                for row in conn.exec_driver_sql("PRAGMA table_info(applications)").fetchall()
+            }
+            if "discord_channel_id" not in app_columns:
+                conn.exec_driver_sql(
+                    "ALTER TABLE applications ADD COLUMN discord_channel_id VARCHAR(32)"
+                )
+            if "callback_text_channel_id" not in app_columns:
+                conn.exec_driver_sql(
+                    "ALTER TABLE applications ADD COLUMN callback_text_channel_id VARCHAR(32)"
+                )
+            if "callback_voice_channel_id" not in app_columns:
+                conn.exec_driver_sql(
+                    "ALTER TABLE applications ADD COLUMN callback_voice_channel_id VARCHAR(32)"
+                )
+            if "callback_started_at" not in app_columns:
+                conn.exec_driver_sql(
+                    "ALTER TABLE applications ADD COLUMN callback_started_at DATETIME"
+                )
+            if "callback_duration_seconds" not in app_columns:
+                conn.exec_driver_sql(
+                    "ALTER TABLE applications ADD COLUMN callback_duration_seconds INTEGER DEFAULT 0"
+                )
+
+            log_columns = {
+                row[1]
+                for row in conn.exec_driver_sql("PRAGMA table_info(action_logs)").fetchall()
+            }
+            if "game_server" not in log_columns:
+                conn.exec_driver_sql(
+                    "ALTER TABLE action_logs ADD COLUMN game_server VARCHAR(16)"
+                )
+            if "promotion_request_id" not in log_columns:
+                conn.exec_driver_sql(
+                    "ALTER TABLE action_logs ADD COLUMN promotion_request_id INTEGER"
+                )
+            if "log_type" not in log_columns:
+                conn.exec_driver_sql(
+                    "ALTER TABLE action_logs ADD COLUMN log_type VARCHAR(16) DEFAULT 'application'"
+                )
+            # Add new columns for target user info (discord id and static id) so logs can be searched
+            if "target_discord_user_id" not in log_columns:
+                conn.exec_driver_sql(
+                    "ALTER TABLE action_logs ADD COLUMN target_discord_user_id VARCHAR(32)"
+                )
+            if "target_static_id" not in log_columns:
+                conn.exec_driver_sql(
+                    "ALTER TABLE action_logs ADD COLUMN target_static_id VARCHAR(64)"
+                )
+
+        else:
+            # Generic SQL DBs (Postgres, MySQL, etc.) — use IF NOT EXISTS for idempotency
+            # Add application-related columns if they don't exist
             conn.exec_driver_sql(
-                "ALTER TABLE applications ADD COLUMN discord_channel_id VARCHAR(32)"
+                "ALTER TABLE applications ADD COLUMN IF NOT EXISTS discord_channel_id VARCHAR(32);"
             )
-        if "callback_text_channel_id" not in app_columns:
             conn.exec_driver_sql(
-                "ALTER TABLE applications ADD COLUMN callback_text_channel_id VARCHAR(32)"
+                "ALTER TABLE applications ADD COLUMN IF NOT EXISTS callback_text_channel_id VARCHAR(32);"
             )
-        if "callback_voice_channel_id" not in app_columns:
             conn.exec_driver_sql(
-                "ALTER TABLE applications ADD COLUMN callback_voice_channel_id VARCHAR(32)"
+                "ALTER TABLE applications ADD COLUMN IF NOT EXISTS callback_voice_channel_id VARCHAR(32);"
             )
-        if "callback_started_at" not in app_columns:
             conn.exec_driver_sql(
-                "ALTER TABLE applications ADD COLUMN callback_started_at DATETIME"
+                "ALTER TABLE applications ADD COLUMN IF NOT EXISTS callback_started_at TIMESTAMP;"
             )
-        if "callback_duration_seconds" not in app_columns:
             conn.exec_driver_sql(
-                "ALTER TABLE applications ADD COLUMN callback_duration_seconds INTEGER DEFAULT 0"
+                "ALTER TABLE applications ADD COLUMN IF NOT EXISTS callback_duration_seconds INTEGER DEFAULT 0;"
             )
 
-        log_columns = {
-            row[1]
-            for row in conn.exec_driver_sql("PRAGMA table_info(action_logs)").fetchall()
-        }
-        if "game_server" not in log_columns:
+            # Add log-related columns and indexes
             conn.exec_driver_sql(
-                "ALTER TABLE action_logs ADD COLUMN game_server VARCHAR(16)"
+                "ALTER TABLE action_logs ADD COLUMN IF NOT EXISTS game_server VARCHAR(16);"
             )
-        if "promotion_request_id" not in log_columns:
             conn.exec_driver_sql(
-                "ALTER TABLE action_logs ADD COLUMN promotion_request_id INTEGER"
+                "ALTER TABLE action_logs ADD COLUMN IF NOT EXISTS promotion_request_id INTEGER;"
             )
-        if "log_type" not in log_columns:
             conn.exec_driver_sql(
-                "ALTER TABLE action_logs ADD COLUMN log_type VARCHAR(16) DEFAULT 'application'"
+                "ALTER TABLE action_logs ADD COLUMN IF NOT EXISTS log_type VARCHAR(16) DEFAULT 'application';"
             )
-        # Add new columns for target user info (discord id and static id) so logs can be searched
-        if "target_discord_user_id" not in log_columns:
             conn.exec_driver_sql(
-                "ALTER TABLE action_logs ADD COLUMN target_discord_user_id VARCHAR(32)"
+                "ALTER TABLE action_logs ADD COLUMN IF NOT EXISTS target_discord_user_id VARCHAR(32);"
             )
-        if "target_static_id" not in log_columns:
             conn.exec_driver_sql(
-                "ALTER TABLE action_logs ADD COLUMN target_static_id VARCHAR(64)"
+                "ALTER TABLE action_logs ADD COLUMN IF NOT EXISTS target_static_id VARCHAR(64);"
+            )
+            # Create indexes to support search
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_action_logs_target_discord_user_id ON action_logs (target_discord_user_id);"
+            )
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_action_logs_target_static_id ON action_logs (target_static_id);"
+            )
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_action_logs_game_server ON action_logs (game_server);"
             )
 
         application_column = next(
