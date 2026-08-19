@@ -303,58 +303,60 @@ def _migrate_schema():
                 "CREATE INDEX IF NOT EXISTS ix_action_logs_game_server ON action_logs (game_server);"
             )
 
-        application_column = next(
-            row for row in conn.exec_driver_sql("PRAGMA table_info(action_logs)").fetchall()
-            if row[1] == "application_id"
-        )
-        if application_column[3]:
-            conn.exec_driver_sql("DROP INDEX IF EXISTS ix_action_logs_application_id")
-            conn.exec_driver_sql("DROP INDEX IF EXISTS ix_action_logs_game_server")
-            conn.exec_driver_sql("ALTER TABLE action_logs RENAME TO action_logs_legacy")
-            conn.exec_driver_sql(
-                """
-                CREATE TABLE action_logs (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    application_id INTEGER,
-                    promotion_request_id INTEGER,
-                    log_type VARCHAR(16) DEFAULT 'application',
-                    action VARCHAR(32) NOT NULL,
-                    actor_name VARCHAR(128) NOT NULL,
-                    actor_id VARCHAR(32) NOT NULL,
-                    details TEXT,
-                    source VARCHAR(16) NOT NULL,
-                    game_server VARCHAR(16),
-                    created_at DATETIME NOT NULL
+        # The following legacy-rewrite and promotion_requests checks are SQLite-specific
+        if engine.dialect.name == "sqlite":
+            application_column = next(
+                row for row in conn.exec_driver_sql("PRAGMA table_info(action_logs)").fetchall()
+                if row[1] == "application_id"
+            )
+            if application_column[3]:
+                conn.exec_driver_sql("DROP INDEX IF EXISTS ix_action_logs_application_id")
+                conn.exec_driver_sql("DROP INDEX IF EXISTS ix_action_logs_game_server")
+                conn.exec_driver_sql("ALTER TABLE action_logs RENAME TO action_logs_legacy")
+                conn.exec_driver_sql(
+                    """
+                    CREATE TABLE action_logs (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        application_id INTEGER,
+                        promotion_request_id INTEGER,
+                        log_type VARCHAR(16) DEFAULT 'application',
+                        action VARCHAR(32) NOT NULL,
+                        actor_name VARCHAR(128) NOT NULL,
+                        actor_id VARCHAR(32) NOT NULL,
+                        details TEXT,
+                        source VARCHAR(16) NOT NULL,
+                        game_server VARCHAR(16),
+                        created_at DATETIME NOT NULL
+                    )
+                    """
                 )
-                """
-            )
-            conn.exec_driver_sql(
-                """
-                INSERT INTO action_logs (
-                    id, application_id, promotion_request_id, log_type, action,
-                    actor_name, actor_id, details, source, game_server, created_at
+                conn.exec_driver_sql(
+                    """
+                    INSERT INTO action_logs (
+                        id, application_id, promotion_request_id, log_type, action,
+                        actor_name, actor_id, details, source, game_server, created_at
+                    )
+                    SELECT id, application_id, promotion_request_id, log_type, action,
+                           actor_name, actor_id, details, source, game_server, created_at
+                    FROM action_logs_legacy
+                    """
                 )
-                SELECT id, application_id, promotion_request_id, log_type, action,
-                       actor_name, actor_id, details, source, game_server, created_at
-                FROM action_logs_legacy
-                """
-            )
-            conn.exec_driver_sql("DROP TABLE action_logs_legacy")
-            conn.exec_driver_sql(
-                "CREATE INDEX ix_action_logs_application_id ON action_logs (application_id)"
-            )
-            conn.exec_driver_sql(
-                "CREATE INDEX ix_action_logs_promotion_request_id ON action_logs (promotion_request_id)"
-            )
-            conn.exec_driver_sql(
-                "CREATE INDEX ix_action_logs_game_server ON action_logs (game_server)"
-            )
+                conn.exec_driver_sql("DROP TABLE action_logs_legacy")
+                conn.exec_driver_sql(
+                    "CREATE INDEX ix_action_logs_application_id ON action_logs (application_id)"
+                )
+                conn.exec_driver_sql(
+                    "CREATE INDEX ix_action_logs_promotion_request_id ON action_logs (promotion_request_id)"
+                )
+                conn.exec_driver_sql(
+                    "CREATE INDEX ix_action_logs_game_server ON action_logs (game_server)"
+                )
 
-        promotion_columns = {
-            row[1]
-            for row in conn.exec_driver_sql("PRAGMA table_info(promotion_requests)").fetchall()
-        }
-        if promotion_columns and "character_name" not in promotion_columns:
-            conn.exec_driver_sql(
-                "ALTER TABLE promotion_requests ADD COLUMN character_name VARCHAR(128) DEFAULT 'Не указан'"
-            )
+            promotion_columns = {
+                row[1]
+                for row in conn.exec_driver_sql("PRAGMA table_info(promotion_requests)").fetchall()
+            }
+            if promotion_columns and "character_name" not in promotion_columns:
+                conn.exec_driver_sql(
+                    "ALTER TABLE promotion_requests ADD COLUMN character_name VARCHAR(128) DEFAULT 'Не указан'"
+                )
