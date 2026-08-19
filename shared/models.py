@@ -174,7 +174,8 @@ def get_engine():
     global _engine
     if _engine is None:
         db_url = get_config()["database"]["url"]
-        _engine = create_engine(db_url, echo=False)
+        # Use a connection pool with pre-ping to avoid stale connections in production
+        _engine = create_engine(db_url, echo=False, pool_pre_ping=True, pool_size=10, max_overflow=20)
     return _engine
 
 
