@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -7,6 +8,114 @@ import yaml
 
 _CONFIG: dict[str, Any] | None = None
 CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.yaml"
+ENV_PATH = CONFIG_PATH.parent / ".env"
+
+
+def _load_env_file() -> None:
+    if not ENV_PATH.exists():
+        return
+    for raw_line in ENV_PATH.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        value = value.strip().strip('"').strip("'")
+        os.environ.setdefault(key.strip(), value)
+
+
+def _env_int(name: str, default: int) -> int:
+    return int(os.environ.get(name, default))
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    return os.environ.get(name, str(default)).lower() in {"1", "true", "yes", "on"}
+
+
+def _env_list(name: str, default: list[int]) -> list[int]:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return [int(item.strip()) for item in value.split(",") if item.strip()]
+
+
+def _apply_env_overrides(config: dict[str, Any]) -> dict[str, Any]:
+    discord = config["discord"]
+    web = config["web"]
+
+    discord["token"] = os.environ.get("DISCORD_TOKEN", discord["token"])
+    discord["guild_id"] = _env_int("DISCORD_GUILD_ID", discord["guild_id"])
+    discord["shared_review_channel"] = _env_bool(
+        "DISCORD_SHARED_REVIEW_CHANNEL", discord.get("shared_review_channel", False)
+    )
+    discord["auto_post_welcome"] = _env_bool(
+        "DISCORD_AUTO_POST_WELCOME", discord.get("auto_post_welcome", False)
+    )
+    discord["review_channel_id"] = _env_int(
+        "DISCORD_REVIEW_CHANNEL_ID", discord.get("review_channel_id", 0)
+    )
+    discord["review_channels"] = {
+        "memphis": _env_int(
+            "DISCORD_REVIEW_CHANNEL_MEMPHIS", discord["review_channels"]["memphis"]
+        ),
+        "phoenix": _env_int(
+            "DISCORD_REVIEW_CHANNEL_PHOENIX", discord["review_channels"]["phoenix"]
+        ),
+    }
+    discord["callback_category_id"] = _env_int(
+        "DISCORD_CALLBACK_CATEGORY_ID", discord.get("callback_category_id", 0)
+    )
+    discord["callback_category_name"] = os.environ.get(
+        "DISCORD_CALLBACK_CATEGORY_NAME", discord.get("callback_category_name", "Обзвоны")
+    )
+    discord["promotion_info_channel_id"] = _env_int(
+        "DISCORD_PROMOTION_INFO_CHANNEL_ID", discord.get("promotion_info_channel_id", 0)
+    )
+    discord["promotion_request_channel_id"] = _env_int(
+        "DISCORD_PROMOTION_REQUEST_CHANNEL_ID", discord.get("promotion_request_channel_id", 0)
+    )
+    discord["application_command"] = os.environ.get(
+        "DISCORD_APPLICATION_COMMAND", discord.get("application_command", "заявка")
+    )
+
+    for role_key in discord.get("roles", {}):
+        env_name = f"DISCORD_ROLE_{role_key.upper()}"
+        if env_name in os.environ:
+            discord["roles"][role_key] = _env_int(env_name, discord["roles"][role_key])
+
+    for server in ("memphis", "phoenix"):
+        discord["server_access_roles"][server] = _env_list(
+            f"DISCORD_SERVER_ACCESS_ROLES_{server.upper()}",
+            discord["server_access_roles"][server],
+        )
+        discord["approved_roles"][server] = _env_list(
+            f"DISCORD_APPROVED_ROLES_{server.upper()}",
+            discord["approved_roles"][server],
+        )
+        for target in discord["promotion_roles"][server]:
+            env_name = f"DISCORD_PROMOTION_ROLE_{server.upper()}_{target.upper()}"
+            if env_name in os.environ:
+                discord["promotion_roles"][server][target] = _env_int(
+                    env_name, discord["promotion_roles"][server][target]
+                )
+
+    web["host"] = os.environ.get("WEB_HOST", web.get("host", "0.0.0.0"))
+    web["port"] = _env_int("WEB_PORT", web.get("port", 8080))
+    web["secret_key"] = os.environ.get("WEB_SECRET_KEY", web["secret_key"])
+    web["base_url"] = os.environ.get("WEB_BASE_URL", web.get("base_url", ""))
+    web["api_secret"] = os.environ.get("WEB_API_SECRET", web["api_secret"])
+    web["oauth"]["client_id"] = os.environ.get(
+        "DISCORD_OAUTH_CLIENT_ID", web["oauth"]["client_id"]
+    )
+    web["oauth"]["client_secret"] = os.environ.get(
+        "DISCORD_OAUTH_CLIENT_SECRET", web["oauth"]["client_secret"]
+    )
+    web["oauth"]["redirect_uri"] = os.environ.get(
+        "DISCORD_OAUTH_REDIRECT_URI", web["oauth"]["redirect_uri"]
+    )
+    config["database"]["url"] = os.environ.get(
+        "DATABASE_URL", config["database"]["url"]
+    )
+    return config
 
 
 def _normalize_snowflake(value: int | str) -> int:
@@ -71,9 +180,10 @@ def _normalize_config(config: dict[str, Any]) -> dict[str, Any]:
 
 def load_config(path: Path | None = None) -> dict[str, Any]:
     global _CONFIG
+    _load_env_file()
     config_path = path or CONFIG_PATH
     with open(config_path, encoding="utf-8") as f:
-        _CONFIG = _normalize_config(yaml.safe_load(f))
+        _CONFIG = _normalize_config(_apply_env_overrides(yaml.safe_load(f)))
     return _CONFIG
 
 
