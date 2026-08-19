@@ -253,6 +253,9 @@ async def notify_user_about_application(application_id: int) -> None:
         "game_server": app.game_server.value,
         "screenshot_url": app.screenshot_url,
         "rejection_reason": app.rejection_reason,
+        # Include reviewer fields so embeds can tag the recruiter who acted
+        "reviewed_by": getattr(app, "reviewed_by", None),
+        "reviewed_by_id": getattr(app, "reviewed_by_id", None),
     }
 
     status = app.status.value
