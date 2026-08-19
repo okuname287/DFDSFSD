@@ -183,11 +183,13 @@ def get_session_factory():
 
 
 def init_db():
-    Path = __import__("pathlib").Path
-    db_path = get_config()["database"]["url"].replace("sqlite:///", "")
-    if db_path and db_path != ":memory:":
-        Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-    Base.metadata.create_all(get_engine())
+    engine = get_engine()
+    if engine.dialect.name == "sqlite":
+        Path = __import__("pathlib").Path
+        db_path = get_config()["database"]["url"].replace("sqlite:///", "")
+        if db_path and db_path != ":memory:":
+            Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+    Base.metadata.create_all(engine)
     _migrate_schema()
 
 
