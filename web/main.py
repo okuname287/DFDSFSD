@@ -102,6 +102,18 @@ app.add_middleware(SessionMiddleware, secret_key=config["web"]["secret_key"])
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
+@app.middleware("http")
+async def static_cache_middleware(request, call_next):
+    """Add long cache headers for static assets to improve frontend load times behind a proxy/CDN."""
+    response = await call_next(request)
+    try:
+        path = request.url.path
+    except Exception:
+        path = ""
+    if path.startswith("/static/"):
+        response.headers.setdefault("Cache-Control", "public, max-age=31536000")
+    return response
+
 
 def verify_api_secret(x_api_secret: Annotated[str, Header()]) -> None:
     if x_api_secret != config["web"]["api_secret"]:
@@ -221,8 +233,9 @@ def _has_server_access(user: dict, server: str) -> bool:
     }
     if any(_has_role(roles, role_key) for role_key in server_roles.get(server, ())):
         return True
+    # Staff roles (recruiters, curators, depowners) should have server access by default.
     if _has_staff_role(roles):
-        return False
+        return True
     allowed_roles = config["discord"].get("server_access_roles", {}).get(server, [])
     return bool(set(roles) & set(allowed_roles))
 
@@ -286,13 +299,12 @@ async def auth_callback(request: Request, code: str):
                 "Discord отклонил обмен OAuth-кода на токен.",
                 f"HTTP {token_resp.status_code}: {error_code} {error_description}".strip(),
             )
-            raise HTTPException(
-                status_code=400,
-                detail=f"OAuth failed: {error_code}",
-            )
-        token_data = token_resp.json()
-        access_token = token_data["access_token"]
+            raise HTTPException(status_code=400, detail=f"OAuth failed: {error_code}")
 
+        token_data = token_resp.json()
+        access_token = token_data.get("access_token")
+
+        # Use Bearer token when calling Discord API
         user_resp = await client.get(
             f"{DISCORD_API}/users/@me",
             headers={"Authorization": f"Bearer {access_token}"},
@@ -309,16 +321,13 @@ async def auth_callback(request: Request, code: str):
 
     role_ids = [int(r) for r in roles]
     display_name = (
-        member_data.get("nick")
-        or user_data.get("global_name")
-        or user_data["username"]
+        member_data.get("nick") or user_data.get("global_name") or user_data["username"]
     )
     profile = register_site_user(
         user_data["id"],
         display_name,
         role_ids,
-        auto_approve=_has_role(role_ids, "owner")
-        or _has_role(role_ids, "chief_moderator"),
+        auto_approve=_has_role(role_ids, "owner") or _has_role(role_ids, "chief_moderator"),
     )
     request.session["user"] = {
         "id": user_data["id"],
