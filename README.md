@@ -10,7 +10,7 @@
 - **4 действия**: одобрить, отклонить (с выбором причины), на обзвон
 - **DM-уведомления**: красивые embed-сообщения в личку после каждого действия
 - **Логи**: старший состав видит историю всех действий
-- **Настройки**: всё в одном файле `config.yaml`
+- **Настройки**: все значения загружаются из ENV-файла
 
 ## Быстрый старт
 
@@ -20,29 +20,19 @@
 pip install -r requirements.txt
 ```
 
-### 2. Настройка `config.yaml`
+### 2. Настройка ENV
 
-```yaml
-discord:
-  token: "ВАШ_ТОКЕН_БОТА"
-  guild_id: 123456789          # ID Discord-сервера
-  review_channel_id: 123456789 # Канал для новых заявок
-  roles:
-    recruiter: 123456789       # Роль рекрута
-    recruit_curator: 123456789 # Роль куратора рекрутов
-    senior_staff: 123456789    # Роль старшего состава
-  approved_roles:
-    memphis: 123456789         # Роль при одобрении (Memphis)
-    phoenix: 123456789         # Роль при одобрении (Phoenix)
-
-web:
-  secret_key: "случайная_строка"
-  api_secret: "другая_случайная_строка"
-  oauth:
-    client_id: "ID приложения Discord"
-    client_secret: "Secret приложения Discord"
-    redirect_uri: "http://localhost:8080/auth/callback"
+```dotenv
+DISCORD_TOKEN=ВАШ_ТОКЕН_БОТА
+DISCORD_GUILD_ID=123456789
+WEB_SECRET_KEY=случайная_строка
+WEB_API_SECRET=другая_случайная_строка
+DISCORD_OAUTH_CLIENT_ID=ID_ПРИЛОЖЕНИЯ
+DISCORD_OAUTH_CLIENT_SECRET=СЕКРЕТ_ПРИЛОЖЕНИЯ
+DISCORD_OAUTH_REDIRECT_URI=http://localhost:8080/auth/callback
 ```
+
+Загрузчик ищет `.env`, а если его нет, использует локальный `1.env`. Оба файла не должны попадать в Git.
 
 ### 3. Создание Discord-приложения
 

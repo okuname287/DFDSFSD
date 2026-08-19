@@ -1,8 +1,9 @@
 __pycache__/
+.DS_Store
 *.py[cod]
 .env
+1.env
 data/
-config.yaml
 .venv/
 .venv_mac/
 venv/

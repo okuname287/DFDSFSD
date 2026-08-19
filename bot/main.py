@@ -150,7 +150,7 @@ class LondoBot(commands.Bot):
                 if channel is None:
                     print(
                         f"⚠️ Канал {channel_id} для сервера {game_server} не найден "
-                        f"(проверьте review_channels.{game_server} в config.yaml)."
+                        f"(проверьте DISCORD_REVIEW_CHANNEL_{game_server.upper()} в ENV)."
                     )
                     continue
                 try:
