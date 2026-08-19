@@ -101,6 +101,21 @@ def build_submitted_embed_data(app_data: dict) -> dict:
 
 def build_approved_embed_data(app_data: dict) -> dict:
     server = _server_info(app_data["game_server"])
+    # If reviewer id present, build a mention to tag them in the DM
+    reviewer_mention = None
+    if app_data.get("reviewed_by_id"):
+        reviewer_mention = f"<@{app_data.get('reviewed_by_id')}" + ">"
+
+    fields = [
+        {"name": "👤 Персонаж", "value": app_data["character_name"], "inline": True},
+        {"name": "🆔 Static", "value": app_data["static_id"], "inline": True},
+        {"name": "\u200b", "value": "\u200b", "inline": False},
+        {"name": "📋 Дальнейшие шаги", "value": "Рекрут выдаст вам роль и проведёт инструктаж. Ожидайте связи на сервере.", "inline": False},
+    ]
+
+    if reviewer_mention:
+        fields.append({"name": "🔎 Рассмотрел", "value": reviewer_mention, "inline": False})
+
     return {
         "title": "🎉 Заявка одобрена!",
         "description": (
@@ -108,12 +123,7 @@ def build_approved_embed_data(app_data: dict) -> dict:
             f"на сервере {server['emoji']} **{server['name']}** была **одобрена**."
         ),
         "color": 0x3BA55D,
-        "fields": [
-            {"name": "👤 Персонаж", "value": app_data["character_name"], "inline": True},
-            {"name": "🆔 Static", "value": app_data["static_id"], "inline": True},
-            {"name": "\u200b", "value": "\u200b", "inline": False},
-            {"name": "📋 Дальнейшие шаги", "value": "Рекрут выдаст вам роль и проведёт инструктаж. Ожидайте связи на сервере.", "inline": False},
-        ],
+        "fields": fields,
         "footer": {"text": f"Londo Family  •  {server['emoji']} {server['name']}"},
     }
 
@@ -123,6 +133,21 @@ def build_approved_embed_data(app_data: dict) -> dict:
 def build_rejected_embed_data(app_data: dict) -> dict:
     server = _server_info(app_data["game_server"])
     reason = app_data.get("rejection_reason") or "Причина не указана."
+    reviewer_mention = None
+    if app_data.get("reviewed_by_id"):
+        reviewer_mention = f"<@{app_data.get('reviewed_by_id')}" + ">"
+
+    fields = [
+        {"name": "👤 Персонаж", "value": app_data["character_name"], "inline": True},
+        {"name": "🆔 Static", "value": app_data["static_id"], "inline": True},
+        {"name": "\u200b", "value": "\u200b", "inline": False},
+        {"name": "📝 Причина", "value": reason, "inline": False},
+        {"name": "💡 Совет", "value": "Вы можете подать заявку повторно, исправив указанные замечания.", "inline": False},
+    ]
+
+    if reviewer_mention:
+        fields.append({"name": "🔎 Рассмотрел", "value": reviewer_mention, "inline": False})
+
     return {
         "title": "❌ Заявка отклонена",
         "description": (
@@ -130,13 +155,7 @@ def build_rejected_embed_data(app_data: dict) -> dict:
             f"на сервере {server['emoji']} **{server['name']}** была **отклонена**."
         ),
         "color": 0xED4245,
-        "fields": [
-            {"name": "👤 Персонаж", "value": app_data["character_name"], "inline": True},
-            {"name": "🆔 Static", "value": app_data["static_id"], "inline": True},
-            {"name": "\u200b", "value": "\u200b", "inline": False},
-            {"name": "📝 Причина", "value": reason, "inline": False},
-            {"name": "💡 Совет", "value": "Вы можете подать заявку повторно, исправив указанные замечания.", "inline": False},
-        ],
+        "fields": fields,
         "footer": {"text": f"Londo Family  •  {server['emoji']} {server['name']}"},
     }
 
@@ -145,6 +164,10 @@ def build_rejected_embed_data(app_data: dict) -> dict:
 
 def build_callback_embed_data(app_data: dict, *, channel_mention: str | None = None) -> dict:
     server = _server_info(app_data["game_server"])
+    reviewer_mention = None
+    if app_data.get("reviewed_by_id"):
+        reviewer_mention = f"<@{app_data.get('reviewed_by_id')}" + ">"
+
     lines = [
         f"Ваша заявка в семью **Londo** на сервере {server['emoji']} **{server['name']}** прошла первичный отбор.",
         "",
@@ -167,6 +190,9 @@ def build_callback_embed_data(app_data: dict, *, channel_mention: str | None = N
             "value": channel_mention,
             "inline": False,
         })
+
+    if reviewer_mention:
+        fields.append({"name": "🔎 Рассмотрел", "value": reviewer_mention, "inline": False})
 
     return {
         "title": "📞 Вы приглашены на обзвон!",
