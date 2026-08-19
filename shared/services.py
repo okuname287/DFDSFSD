@@ -124,6 +124,9 @@ def process_action(app_id: int, action: ApplicationAction) -> Application | None
             action=action.action,
             actor_name=action.actor_name,
             actor_id=action.actor_id,
+            # Store the target (application owner) identifiers for searching
+            target_discord_user_id=app.discord_user_id,
+            target_static_id=app.static_id,
             details=app.rejection_reason if action.action == "reject" else None,
             source=action.source,
             game_server=app.game_server.value,
@@ -175,7 +178,10 @@ def update_callback_voice_state(
 def get_logs(
     application_id: int | None = None,
     game_server: str | None = None,
+    discord_user_id: str | None = None,
+    static_id: str | None = None,
 ) -> list[ActionLog]:
+    """Return action logs. Can filter by application_id, game_server, target discord_user_id or target static_id."""
     session = get_session_factory()()
     try:
         query = session.query(ActionLog)
@@ -183,9 +189,21 @@ def get_logs(
             query = query.filter(ActionLog.application_id == application_id)
         if game_server:
             query = query.filter(ActionLog.game_server == game_server)
+        if discord_user_id:
+            query = query.filter(ActionLog.target_discord_user_id == str(discord_user_id))
+        if static_id:
+            query = query.filter(ActionLog.target_static_id == str(static_id))
         return query.order_by(ActionLog.created_at.desc()).all()
     finally:
         session.close()
+
+
+def search_logs(*, discord_user_id: str | None = None, static_id: str | None = None) -> list[ActionLog]:
+    """Convenience search API to find logs by target discord id or static id.
+
+    Pass either discord_user_id, static_id, or both. Returns matching ActionLog rows ordered by newest first.
+    """
+    return get_logs(discord_user_id=discord_user_id, static_id=static_id)
 
 
 def record_login(discord_user_id: str, discord_username: str, roles: list[int]) -> None:
