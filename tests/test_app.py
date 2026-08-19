@@ -21,6 +21,15 @@ def test_public_base_url_replaces_stale_local_oauth_redirect(monkeypatch):
     assert config["web"]["oauth"]["redirect_uri"] == "https://londo.example.com/auth/callback"
 
 
+def test_host_port_overrides_local_web_port(monkeypatch):
+    monkeypatch.setenv("WEB_PORT", "8080")
+    monkeypatch.setenv("PORT", "18432")
+
+    config = _build_config_from_env()
+
+    assert config["web"]["port"] == 18432
+
+
 async def fake_current_user(request):
     return {"id": "123", "username": "member", "roles": []}
 

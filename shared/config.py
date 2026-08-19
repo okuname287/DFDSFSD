@@ -98,7 +98,7 @@ def _build_config_from_env() -> dict[str, Any]:
         },
         "web": {
             "host": _env("WEB_HOST", "0.0.0.0"),
-            "port": _env_int("WEB_PORT", 8080),
+            "port": _env_int("PORT", _env_int("WEB_PORT", 8080)),
             "secret_key": _env("WEB_SECRET_KEY"),
             "base_url": base_url,
             "api_secret": _env("WEB_API_SECRET"),
