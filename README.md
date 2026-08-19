@@ -55,14 +55,17 @@ web:
 
 ### 4. Запуск
 
-В двух терминалах:
+Сайт и бот можно запустить одной командой:
 
 ```bash
-# Терминал 1 — сайт
-python run_web.py
+python run.py
+```
 
-# Терминал 2 — бот
-python run_bot.py
+Отдельный запуск тоже доступен:
+
+```bash
+python run_web.py  # только сайт
+python run_bot.py  # только бот
 ```
 
 Сайт: http://localhost:8080

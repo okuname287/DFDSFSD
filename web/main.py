@@ -352,6 +352,9 @@ async def access_denied(request: Request):
 @app.post("/api/applications", response_model=ApplicationResponse, dependencies=[Depends(verify_api_secret)])
 async def api_create_application(data: ApplicationCreate):
     app_obj = create_application(data)
+    from shared.notify import notify_new_application
+
+    await notify_new_application(app_obj.game_server.value)
     return app_obj
 
 
@@ -386,7 +389,11 @@ async def api_update_message_id(app_id: int, data: MessageIdUpdate):
 
 @app.post("/api/promotions", response_model=PromotionResponse, dependencies=[Depends(verify_api_secret)])
 async def api_create_promotion(data: PromotionCreate):
-    return create_promotion(data)
+    promotion = create_promotion(data)
+    from shared.notify import notify_new_promotion
+
+    await notify_new_promotion(promotion.game_server.value)
+    return promotion
 
 
 @app.get("/api/promotions/{request_id}", response_model=PromotionResponse, dependencies=[Depends(verify_api_secret)])

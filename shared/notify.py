@@ -14,11 +14,20 @@ from shared.embeds import (
 from shared.services import (
     get_application,
     get_promotion,
+    log_bot_error,
     update_callback_channels,
     update_callback_voice_state,
 )
 
 DISCORD_API = "https://discord.com/api/v10"
+
+
+def _log_discord_failure(event_name: str, response: httpx.Response) -> None:
+    log_bot_error(
+        event_name,
+        "Discord API не выполнил операцию.",
+        f"HTTP {response.status_code}: {response.text[:500]}",
+    )
 
 
 async def _create_callback_channels(guild_id: int, user_id: int, app_id: int, game_server: str) -> dict | None:
@@ -28,21 +37,19 @@ async def _create_callback_channels(guild_id: int, user_id: int, app_id: int, ga
     category_name = get_config()["discord"].get("callback_category_name", "Обзвоны")
 
     async with httpx.AsyncClient() as client:
-        # Try to find or create the callback category
-        channels_resp = await client.get(
-            f"{DISCORD_API}/guilds/{guild_id}/channels",
-            headers=_headers(),
-        )
-        if channels_resp.status_code != 200:
-            return None
-
         category_id = str(get_config()["discord"].get("callback_category_id") or "") or None
-        for ch in channels_resp.json():
-            if category_id:
-                break
-            if ch.get("name") == category_name and ch.get("type") == 4:
-                category_id = ch["id"]
-                break
+        if not category_id:
+            channels_resp = await client.get(
+                f"{DISCORD_API}/guilds/{guild_id}/channels",
+                headers=_headers(),
+            )
+            if channels_resp.status_code != 200:
+                _log_discord_failure("callback_list_channels", channels_resp)
+                return None
+            for ch in channels_resp.json():
+                if ch.get("name") == category_name and ch.get("type") == 4:
+                    category_id = ch["id"]
+                    break
         if not category_id:
             category_resp = await client.post(
                 f"{DISCORD_API}/guilds/{guild_id}/channels",
@@ -50,6 +57,7 @@ async def _create_callback_channels(guild_id: int, user_id: int, app_id: int, ga
                 headers=_headers(),
             )
             if category_resp.status_code not in (200, 201):
+                _log_discord_failure("callback_create_category", category_resp)
                 return None
             category_id = category_resp.json()["id"]
 
@@ -107,6 +115,7 @@ async def _create_callback_channels(guild_id: int, user_id: int, app_id: int, ga
             headers=_headers(),
         )
         if text_resp.status_code not in (200, 201):
+            _log_discord_failure("callback_create_text_channel", text_resp)
             return None
         text_channel = text_resp.json()
 
@@ -121,7 +130,14 @@ async def _create_callback_channels(guild_id: int, user_id: int, app_id: int, ga
             },
             headers=_headers(),
         )
-        voice_channel = voice_resp.json() if voice_resp.status_code in (200, 201) else None
+        if voice_resp.status_code not in (200, 201):
+            _log_discord_failure("callback_create_voice_channel", voice_resp)
+            await client.delete(
+                f"{DISCORD_API}/channels/{text_channel['id']}",
+                headers=_headers(),
+            )
+            return None
+        voice_channel = voice_resp.json()
 
         result = {
             "text_id": text_channel["id"],
@@ -170,6 +186,34 @@ async def _send_message_to_channel(channel_id: str, content: str, embed: dict | 
         return resp.status_code in (200, 201)
 
 
+async def notify_new_application(game_server: str) -> bool:
+    channel_id = get_config()["discord"].get("notification_channels", {}).get(game_server)
+    if not channel_id:
+        return False
+    server_name = get_config()["servers"].get(game_server, {}).get("name", game_server)
+    try:
+        return await _send_message_to_channel(
+            str(channel_id),
+            f"📨 На сервере **{server_name}** подана заявка. Посмотрите на сайте.",
+        )
+    except httpx.HTTPError:
+        return False
+
+
+async def notify_new_promotion(game_server: str) -> bool:
+    channel_id = get_config()["discord"].get("notification_channels", {}).get(game_server)
+    if not channel_id:
+        return False
+    server_name = get_config()["servers"].get(game_server, {}).get("name", game_server)
+    try:
+        return await _send_message_to_channel(
+            str(channel_id),
+            f"📈 На сервере **{server_name}** подан запрос на повышение. Посмотрите на сайте.",
+        )
+    except httpx.HTTPError:
+        return False
+
+
 async def notify_user_about_application(application_id: int) -> None:
     app = get_application(application_id)
     if not app:
@@ -195,7 +239,18 @@ async def notify_user_about_application(application_id: int) -> None:
 
     # ── Callback: create channels, then send DM with link ──
     if status == "callback":
-        channels = await _create_callback_channels(guild_id, int(app.discord_user_id), app.id, app.game_server.value)
+        try:
+            channels = await _create_callback_channels(
+                guild_id, int(app.discord_user_id), app.id, app.game_server.value
+            )
+        except Exception as exc:
+            log_bot_error(
+                "callback_create_channels",
+                "Не удалось создать временные каналы обзвона.",
+                repr(exc),
+                discord_user_id=app.discord_user_id,
+            )
+            channels = None
         channel_mention = None
         if channels:
             channel_mention = f"<#{channels['text_id']}>"
@@ -239,22 +294,30 @@ async def notify_user_about_application(application_id: int) -> None:
 
 
 async def _send_dm_embed(user_id: int, embed: dict) -> bool:
-    async with httpx.AsyncClient() as client:
-        channel_resp = await client.post(
-            f"{DISCORD_API}/users/@me/channels",
-            json={"recipient_id": str(user_id)},
-            headers=_headers(),
-        )
-        if channel_resp.status_code not in (200, 201):
-            return False
-        channel_id = channel_resp.json()["id"]
+    try:
+        async with httpx.AsyncClient() as client:
+            channel_resp = await client.post(
+                f"{DISCORD_API}/users/@me/channels",
+                json={"recipient_id": str(user_id)},
+                headers=_headers(),
+            )
+            if channel_resp.status_code not in (200, 201):
+                _log_discord_failure("callback_create_dm", channel_resp)
+                return False
+            channel_id = channel_resp.json()["id"]
 
-        msg_resp = await client.post(
-            f"{DISCORD_API}/channels/{channel_id}/messages",
-            json={"embeds": [embed]},
-            headers=_headers(),
-        )
-        return msg_resp.status_code in (200, 201)
+            msg_resp = await client.post(
+                f"{DISCORD_API}/channels/{channel_id}/messages",
+                json={"embeds": [embed]},
+                headers=_headers(),
+            )
+            if msg_resp.status_code not in (200, 201):
+                _log_discord_failure("callback_send_dm", msg_resp)
+                return False
+            return True
+    except httpx.HTTPError as exc:
+        log_bot_error("callback_send_dm", "Не удалось отправить DM через Discord API.", repr(exc))
+        return False
 
 
 async def _add_role(user_id: int, role_id: int) -> bool:

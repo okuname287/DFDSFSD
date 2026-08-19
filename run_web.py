@@ -1,5 +1,6 @@
 """Запуск веб-сайта."""
 import uvicorn
+import os
 
 from shared.config import get_config
 
@@ -9,5 +10,5 @@ if __name__ == "__main__":
         "web.main:app",
         host=config["web"]["host"],
         port=config["web"]["port"],
-        reload=True,
+        reload=os.environ.get("LONDO_RELOAD", "1").lower() in {"1", "true", "yes", "on"},
     )

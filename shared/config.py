@@ -73,6 +73,16 @@ def _apply_env_overrides(config: dict[str, Any]) -> dict[str, Any]:
     discord["promotion_request_channel_id"] = _env_int(
         "DISCORD_PROMOTION_REQUEST_CHANNEL_ID", discord.get("promotion_request_channel_id", 0)
     )
+    discord["notification_channels"] = {
+        "memphis": _env_int(
+            "DISCORD_NOTIFICATION_CHANNEL_MEMPHIS",
+            discord.get("notification_channels", {}).get("memphis", 0),
+        ),
+        "phoenix": _env_int(
+            "DISCORD_NOTIFICATION_CHANNEL_PHOENIX",
+            discord.get("notification_channels", {}).get("phoenix", 0),
+        ),
+    }
     discord["application_command"] = os.environ.get(
         "DISCORD_APPLICATION_COMMAND", discord.get("application_command", "заявка")
     )
