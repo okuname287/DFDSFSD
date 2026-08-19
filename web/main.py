@@ -4,6 +4,7 @@ from typing import Annotated
 
 import httpx
 from pathlib import Path
+from urllib.parse import urlencode
 
 from contextlib import asynccontextmanager
 
@@ -247,7 +248,7 @@ async def login():
         "response_type": "code",
         "scope": "identify guilds.members.read",
     }
-    query = "&".join(f"{k}={v}" for k, v in params.items())
+    query = urlencode(params)
     return RedirectResponse(f"{DISCORD_OAUTH}?{query}")
 
 

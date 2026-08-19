@@ -65,6 +65,15 @@ def _build_config_from_env() -> dict[str, Any]:
     )
     roles = {key: _env_int(f"DISCORD_ROLE_{key.upper()}", 0) for key in role_keys}
     promotion_targets = ("baby_londo", "young_londo", "main", "recruit")
+    base_url = _env("WEB_BASE_URL", "http://localhost:8080").rstrip("/")
+    configured_redirect_uri = _env("DISCORD_OAUTH_REDIRECT_URI")
+    if not configured_redirect_uri or any(
+        host in configured_redirect_uri
+        for host in ("localhost", "127.0.0.1", "0.0.0.0")
+    ) and not any(
+        host in base_url for host in ("localhost", "127.0.0.1", "0.0.0.0")
+    ):
+        configured_redirect_uri = f"{base_url}/auth/callback"
     return {
         "discord": {
             "token": _env("DISCORD_TOKEN"),
@@ -91,12 +100,12 @@ def _build_config_from_env() -> dict[str, Any]:
             "host": _env("WEB_HOST", "0.0.0.0"),
             "port": _env_int("WEB_PORT", 8080),
             "secret_key": _env("WEB_SECRET_KEY"),
-            "base_url": _env("WEB_BASE_URL", "http://localhost:8080"),
+            "base_url": base_url,
             "api_secret": _env("WEB_API_SECRET"),
             "oauth": {
                 "client_id": _env("DISCORD_OAUTH_CLIENT_ID"),
                 "client_secret": _env("DISCORD_OAUTH_CLIENT_SECRET"),
-                "redirect_uri": _env("DISCORD_OAUTH_REDIRECT_URI", "http://localhost:8080/auth/callback"),
+                "redirect_uri": configured_redirect_uri,
             },
         },
         "database": {"url": _env("DATABASE_URL", "sqlite:///./data/applications.db")},

@@ -3,12 +3,22 @@ from fastapi.testclient import TestClient
 from web.main import app
 import web.main as web_main
 from bot.views import ApplicationModal, PromotionModal
+from shared.config import _build_config_from_env
 
 
 def test_root_page_loads():
     client = TestClient(app)
     response = client.get("/")
     assert response.status_code == 200
+
+
+def test_public_base_url_replaces_stale_local_oauth_redirect(monkeypatch):
+    monkeypatch.setenv("WEB_BASE_URL", "https://londo.example.com")
+    monkeypatch.setenv("DISCORD_OAUTH_REDIRECT_URI", "http://localhost:8080/auth/callback")
+
+    config = _build_config_from_env()
+
+    assert config["web"]["oauth"]["redirect_uri"] == "https://londo.example.com/auth/callback"
 
 
 async def fake_current_user(request):
