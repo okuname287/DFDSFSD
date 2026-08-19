@@ -173,10 +173,20 @@ async def _delete_callback_channels(app) -> None:
     update_callback_channels(app.id, None, None)
 
 
-async def _send_message_to_channel(channel_id: str, content: str, embed: dict | None = None) -> bool:
+async def _send_message_to_channel(
+    channel_id: str,
+    content: str,
+    embed: dict | None = None,
+    allowed_role_ids: list[int] | None = None,
+) -> bool:
     payload: dict = {"content": content}
     if embed:
         payload["embeds"] = [embed]
+    if allowed_role_ids:
+        payload["allowed_mentions"] = {
+            "parse": [],
+            "roles": [str(role_id) for role_id in allowed_role_ids],
+        }
     async with httpx.AsyncClient() as client:
         resp = await client.post(
             f"{DISCORD_API}/channels/{channel_id}/messages",
@@ -187,28 +197,38 @@ async def _send_message_to_channel(channel_id: str, content: str, embed: dict | 
 
 
 async def notify_new_application(game_server: str) -> bool:
-    channel_id = get_config()["discord"].get("notification_channels", {}).get(game_server)
+    config = get_config()
+    channel_id = config["discord"].get("notification_channels", {}).get(game_server)
     if not channel_id:
         return False
-    server_name = get_config()["servers"].get(game_server, {}).get("name", game_server)
+    server_name = config["servers"].get(game_server, {}).get("name", game_server)
+    recruiter_role_id = config["discord"].get("roles", {}).get(
+        f"recruiter_{game_server}"
+    )
     try:
         return await _send_message_to_channel(
             str(channel_id),
-            f"📨 На сервере **{server_name}** подана заявка. Посмотрите на сайте.",
+            f"<@&{recruiter_role_id}> 📨 На сервере **{server_name}** подана заявка. Посмотрите на сайте.",
+            allowed_role_ids=[recruiter_role_id] if recruiter_role_id else None,
         )
     except httpx.HTTPError:
         return False
 
 
 async def notify_new_promotion(game_server: str) -> bool:
-    channel_id = get_config()["discord"].get("notification_channels", {}).get(game_server)
+    config = get_config()
+    channel_id = config["discord"].get("notification_channels", {}).get(game_server)
     if not channel_id:
         return False
-    server_name = get_config()["servers"].get(game_server, {}).get("name", game_server)
+    server_name = config["servers"].get(game_server, {}).get("name", game_server)
+    recruiter_role_id = config["discord"].get("roles", {}).get(
+        f"recruiter_{game_server}"
+    )
     try:
         return await _send_message_to_channel(
             str(channel_id),
-            f"📈 На сервере **{server_name}** подан запрос на повышение. Посмотрите на сайте.",
+            f"<@&{recruiter_role_id}> 📈 На сервере **{server_name}** подан запрос на повышение. Посмотрите на сайте.",
+            allowed_role_ids=[recruiter_role_id] if recruiter_role_id else None,
         )
     except httpx.HTTPError:
         return False

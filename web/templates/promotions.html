@@ -29,9 +29,9 @@
             <h1>Запросы на повышение{% if server != 'all' %} {{ config.servers[server].name }}{% endif %}</h1>
         </header>
         <div class="filter-tabs">
-            <a href="/promotions?server=all&status=pending" class="tab {% if server == 'all' and status == 'pending' %}active{% endif %}">На рассмотрении</a>
-            <a href="/promotions?server=all&status=approved" class="tab {% if status == 'approved' %}active{% endif %}">Одобрены</a>
-            <a href="/promotions?server=all&status=rejected" class="tab {% if status == 'rejected' %}active{% endif %}">Отклонены</a>
+            <a href="/promotions?server={{ server }}&status=pending" class="tab {% if status == 'pending' %}active{% endif %}">На рассмотрении</a>
+            <a href="/promotions?server={{ server }}&status=approved" class="tab {% if status == 'approved' %}active{% endif %}">Одобрены</a>
+            <a href="/promotions?server={{ server }}&status=rejected" class="tab {% if status == 'rejected' %}active{% endif %}">Отклонены</a>
             {% if visible_servers|length > 1 %}
             {% if 'memphis' in visible_servers %}<a href="/promotions?server=memphis&status={{ status }}" class="tab {% if server == 'memphis' %}active{% endif %}">Memphis</a>{% endif %}
             {% if 'phoenix' in visible_servers %}<a href="/promotions?server=phoenix&status={{ status }}" class="tab {% if server == 'phoenix' %}active{% endif %}">Phoenix</a>{% endif %}
