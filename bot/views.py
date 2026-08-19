@@ -162,6 +162,9 @@ def _app_to_dict(app) -> dict:
         "screenshot_url": app.screenshot_url,
         "status": app.status.value if hasattr(app.status, "value") else app.status,
         "rejection_reason": app.rejection_reason,
+        # Include reviewer info so DM embeds can mention the recruiter who acted
+        "reviewed_by": getattr(app, "reviewed_by", None),
+        "reviewed_by_id": getattr(app, "reviewed_by_id", None),
     }
 
 
