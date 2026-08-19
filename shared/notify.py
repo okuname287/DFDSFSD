@@ -294,11 +294,15 @@ async def notify_user_about_application(application_id: int) -> None:
     # ── Approved: add role, send DM ──
     if status == "approved":
         await _delete_callback_channels(app)
-        # Give configured approved roles
+        # Give configured approved roles (server membership roles). Exclude any promotion roles
         role_ids = config["discord"]["approved_roles"].get(app.game_server.value, [])
+        # Exclude promotion role IDs to avoid accidentally granting 'Young Londo' or similar
+        promotion_role_map = config["discord"].get("promotion_roles", {}).get(app.game_server.value, {})
+        promotion_role_ids = {rid for rid in promotion_role_map.values() if rid}
         for role_id in role_ids:
-            if role_id:
+            if role_id and role_id not in promotion_role_ids:
                 await _add_role(int(app.discord_user_id), role_id)
+
         # Give explicit newbie role on approval
         newbie_role_id = 1539607514688258118
         try:
