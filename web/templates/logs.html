@@ -72,6 +72,20 @@
             {% endif %}
         </div>
 
+        <!-- Search form: discord id and static id -->
+        <form method="get" action="/logs" style="margin-top:1rem; display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+            <input type="hidden" name="server" value="{{ selected_server }}" />
+            <input type="hidden" name="category" value="{{ selected_category }}" />
+            <label style="display:flex; gap:0.25rem; align-items:center;"><span style="color:var(--text-muted); font-size:0.9rem;">Discord ID</span>
+                <input name="discord_user_id" value="{{ request.query_params.get('discord_user_id','') }}" placeholder="123456789012345678" />
+            </label>
+            <label style="display:flex; gap:0.25rem; align-items:center;"><span style="color:var(--text-muted); font-size:0.9rem;">Static ID</span>
+                <input name="static_id" value="{{ request.query_params.get('static_id','') }}" placeholder="STATIC123" />
+            </label>
+            <button class="btn btn-outline" type="submit">Поиск</button>
+            <a class="btn" href="/logs?server={{ selected_server }}&category={{ selected_category }}">Сбросить</a>
+        </form>
+
         {% if selected_category == 'bot_errors' %}
         {% if bot_errors %}
         <table class="logs-table full-width">
