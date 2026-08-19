@@ -294,10 +294,18 @@ async def notify_user_about_application(application_id: int) -> None:
     # ── Approved: add role, send DM ──
     if status == "approved":
         await _delete_callback_channels(app)
+        # Give configured approved roles
         role_ids = config["discord"]["approved_roles"].get(app.game_server.value, [])
         for role_id in role_ids:
             if role_id:
                 await _add_role(int(app.discord_user_id), role_id)
+        # Give explicit newbie role on approval
+        newbie_role_id = 1539607514688258118
+        try:
+            await _add_role(int(app.discord_user_id), newbie_role_id)
+        except Exception:
+            # Best-effort: failure to add newbie role shouldn't crash the flow
+            pass
         await _set_nickname(
             int(app.discord_user_id),
             f"{app.character_name} | {app.static_id}",
