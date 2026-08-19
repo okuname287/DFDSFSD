@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Заявка #{{ application.id }}</title>
+    <link rel="stylesheet" href="/static/css/style.css?v=2026-ui">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand"><a href="/">Londo Family</a></div>
+        <div class="nav-links">
+            <a href="/cabinet/{{ application.game_server.value }}">← Назад</a>
+            <span class="user-badge">{{ user.username }}</span>
+            {% if is_access_admin %}<a href="/settings/access" class="settings-gear" title="Настройки доступа" aria-label="Настройки доступа">⚙</a>{% endif %}
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="application-detail">
+            <header class="detail-header">
+                <h1>{{ application.character_name }}</h1>
+                <span class="status-badge status-{{ application.status.value }}">{{ status_labels[application.status.value] }}</span>
+            </header>
+
+            <div class="detail-grid">
+                <div class="detail-section">
+                    <h3>Информация</h3>
+                    <dl>
+                        <dt>Static ID</dt><dd>{{ application.static_id }}</dd>
+                        <dt>OOC Возраст</dt><dd>{{ application.ooc_age }}</dd>
+                        <dt>Сервер</dt><dd>{{ config.servers[application.game_server.value].name }}</dd>
+                        <dt>Discord</dt><dd>{{ application.discord_username }} ({{ application.discord_user_id }})</dd>
+                        <dt>Дата подачи</dt><dd>{{ application.created_at.strftime('%d.%m.%Y %H:%M') }}</dd>
+                        <dt>Время на обзвоне</dt><dd>{{ format_duration(application.callback_duration_seconds) }}</dd>
+                        {% if application.reviewed_by %}
+                        <dt>Рассмотрел</dt><dd>{{ application.reviewed_by }}</dd>
+                        {% endif %}
+                        {% if application.rejection_reason %}
+                        <dt>Причина отклонения</dt><dd>{{ application.rejection_reason }}</dd>
+                        {% endif %}
+                    </dl>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Цель вступления</h3>
+                    <p class="text-block">{{ application.join_goal }}</p>
+                    <h3>Как узнали о семье?</h3>
+                    <p class="text-block">{{ application.how_found }}</p>
+                </div>
+
+                <div class="detail-section screenshot-section">
+                    <h3>Скриншот персонажа</h3>
+                    {% if application.screenshot_url and application.screenshot_url != 'Не прикреплено' %}
+                    <p class="text-block"><a href="{{ application.screenshot_url }}" target="_blank" rel="noreferrer">Открыть ссылку на скриншот</a></p>
+                    {% else %}
+                    <p class="text-block">Скриншот не прикреплён.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if can_review and application.status.value in ('pending', 'callback') %}
+            <div class="action-panel">
+                <h3>Действия</h3>
+                <div class="action-buttons">
+                    {% if application.status.value == 'pending' %}
+                    <form method="post" action="/application/{{ application.id }}/action" class="inline-form">
+                        <input type="hidden" name="action" value="approve">
+                        <button type="submit" class="btn btn-success">✅ Принять</button>
+                    </form>
+                    <form method="post" action="/application/{{ application.id }}/action" class="inline-form">
+                        <input type="hidden" name="action" value="callback">
+                        <button type="submit" class="btn btn-warning">📞 Вызвать на обзвон</button>
+                    </form>
+                    {% else %}
+                    <form method="post" action="/application/{{ application.id }}/action" class="inline-form">
+                        <input type="hidden" name="action" value="approve">
+                        <button type="submit" class="btn btn-success">✅ Принять после обзвона</button>
+                    </form>
+                    {% endif %}
+                    <button type="button" class="btn btn-danger" onclick="document.getElementById('reject-modal').showModal()">❌ Отклонить</button>
+                </div>
+            </div>
+
+            <dialog id="reject-modal" class="modal">
+                <form method="post" action="/application/{{ application.id }}/action">
+                    <input type="hidden" name="action" value="reject">
+                    <h3>Причина отклонения</h3>
+                    <div class="reason-list">
+                        {% for reason in config.rejection_reasons %}
+                        <label class="reason-option">
+                            <input type="radio" name="rejection_reason_id" value="{{ reason.id }}" required
+                                   {% if reason.id == 'other' %}onchange="document.getElementById('custom-reason').style.display='block'"{% else %}onchange="document.getElementById('custom-reason').style.display='none'"{% endif %}>
+                            {{ reason.label }}
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <textarea id="custom-reason" name="custom_reason" placeholder="Укажите свою причину..." style="display:none" rows="3"></textarea>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-outline" onclick="document.getElementById('reject-modal').close()">Отмена</button>
+                        <button type="submit" class="btn btn-danger">Отклонить</button>
+                    </div>
+                </form>
+            </dialog>
+            {% endif %}
+
+            {% if logs %}
+            <div class="logs-section">
+                <h3>История действий</h3>
+                <table class="logs-table">
+                    <thead>
+                        <tr><th>Дата</th><th>Действие</th><th>Кто</th><th>Детали</th><th>Источник</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td>{{ log.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                            <td>{{ action_labels.get(log.action, log.action) }}</td>
+                            <td>{{ log.actor_name }}</td>
+                            <td>{{ log.details or '—' }}</td>
+                            <td>{{ source_labels.get(log.source, log.source) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+</body>
+</html>

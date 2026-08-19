@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Настройки доступа — Londo</title>
+    <link rel="stylesheet" href="/static/css/style.css?v=2026-ui">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand"><a href="/">Londo Family</a></div>
+        <div class="nav-links">
+            <a href="/">Рабочее пространство</a>
+            <a href="/settings/access" class="active">Настройки</a>
+            <span class="user-badge">{{ user.username }}</span>
+                <a href="/settings/access" class="settings-gear active" title="Настройки доступа" aria-label="Настройки доступа">⚙</a>
+            <a href="/auth/logout" class="btn btn-outline">Выйти</a>
+        </div>
+    </nav>
+    <main class="container">
+        <header class="workspace-heading">
+            <div>
+                <p class="eyebrow">Администрирование</p>
+                <h1>Настройки доступа</h1>
+                <p class="subtitle">Укажите Discord role ID через запятую для каждого раздела сайта.</p>
+            </div>
+        </header>
+        {% if saved %}
+        <div class="settings-notice">✅ Настройки доступа сохранены.</div>
+        {% endif %}
+        {% if users_saved %}
+        <div class="settings-notice">✅ Статус профиля обновлён.</div>
+        {% endif %}
+        <form method="post" class="settings-form">
+            {% for section, label in sections.items() %}
+            <label class="settings-field">
+                <span>{{ label }}</span>
+                <small>Discord role ID</small>
+                <input name="{{ section }}" value="{{ settings[section] }}" placeholder="123456789012345678, 987654321098765432">
+            </label>
+            {% endfor %}
+            <div class="settings-actions">
+                <button class="btn btn-primary" type="submit">Сохранить настройки</button>
+                <a class="btn btn-outline" href="/">Отмена</a>
+            </div>
+        </form>
+
+        <section class="settings-users">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">Профили Discord</p>
+                    <h2>Одобрение доступа</h2>
+                </div>
+                <p class="subtitle">Только Owner может выдать или забрать доступ к сайту.</p>
+            </div>
+            {% if site_users %}
+            <div class="settings-users-list">
+                {% for site_user in site_users %}
+                <article class="settings-user-row">
+                    <div>
+                        <strong>{{ site_user.discord_username }}</strong>
+                        <small>ID: {{ site_user.discord_user_id }}</small>
+                        <small>{% if site_user.is_approved %}Одобрен{% else %}Ожидает одобрения{% endif %}</small>
+                    </div>
+                    {% if user.roles and config.discord.roles.owner in user.roles %}
+                    <form method="post" action="/settings/users/{{ site_user.discord_user_id }}/approval">
+                        <input type="hidden" name="action" value="{% if site_user.is_approved %}reject{% else %}approve{% endif %}">
+                        <button class="btn {% if site_user.is_approved %}btn-danger{% else %}btn-success{% endif %}" type="submit">
+                            {% if site_user.is_approved %}Забрать доступ{% else %}Одобрить доступ{% endif %}
+                        </button>
+                    </form>
+                    {% endif %}
+                </article>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state"><p>Профилей на проверке пока нет.</p></div>
+            {% endif %}
+        </section>
+    </main>
+</body>
+</html>

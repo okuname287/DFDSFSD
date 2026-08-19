@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+.env
+data/
+config.yaml
+.venv/
+.venv_mac/
+venv/

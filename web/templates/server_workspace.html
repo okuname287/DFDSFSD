@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ config.servers[server].name }} — Londo Family</title>
+    <link rel="stylesheet" href="/static/css/style.css?v=2026-ui">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand"><a href="/">Londo Family</a></div>
+        <div class="nav-links">
+            {% for available_server in visible_servers %}
+            <a href="/server/{{ available_server }}" class="{% if available_server == server %}active{% endif %}">{{ config.servers[available_server].name }}</a>
+            {% endfor %}
+            {% if can_view_logs %}<a href="/logs?server={{ server }}&category=applications">Логи</a>{% endif %}
+            {% if is_access_admin %}<a href="/settings/access">Настройки</a>{% endif %}
+            <span class="user-badge">{{ user.username }}</span>
+                {% if is_access_admin %}<a href="/settings/access" class="settings-gear" title="Настройки доступа" aria-label="Настройки доступа">⚙</a>{% endif %}
+            <a href="/auth/logout" class="btn btn-outline">Выйти</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        <header class="workspace-heading {{ server }}">
+            <div>
+                <p class="eyebrow">Londo Family / Сервер</p>
+                <h1>{{ config.servers[server].emoji }} {{ config.servers[server].name }}</h1>
+                <p class="subtitle">Все рабочие разделы сервера собраны в одном месте.</p>
+            </div>
+        </header>
+
+        <section class="workspace-grid">
+            <a href="/cabinet/{{ server }}" class="workspace-card workspace-card-applications">
+                <div class="workspace-card-top">
+                    <span class="workspace-icon">📋</span>
+                    <p class="eyebrow">Основной состав</p>
+                </div>
+                <div class="workspace-card-content">
+                    <h2>Заявки в семью</h2>
+                    <p>Рассмотрение заявок, обзвоны и решения по вступлению.</p>
+                </div>
+                <span class="workspace-card-action">Открыть раздел <span>→</span></span>
+            </a>
+            <a href="/promotions?server={{ server }}" class="workspace-card workspace-card-promotions">
+                <div class="workspace-card-top">
+                    <span class="workspace-icon">📈</span>
+                    <p class="eyebrow">Развитие семьи</p>
+                </div>
+                <div class="workspace-card-content">
+                    <h2>Запросы на повышение</h2>
+                    <p>Проверка доказательств и выдача следующей роли.</p>
+                </div>
+                <span class="workspace-card-action">Открыть раздел <span>→</span></span>
+            </a>
+        </section>
+    </main>
+</body>
+</html>

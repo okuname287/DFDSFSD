@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Заявки в семью — {{ config.servers[server].name }}</title>
+    <link rel="stylesheet" href="/static/css/style.css?v=2026-ui">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand"><a href="/">Londo Family</a></div>
+        <div class="nav-links">
+            {% if 'memphis' in visible_servers %}<a href="/server/memphis" class="{% if server == 'memphis' %}active{% endif %}">Memphis</a>{% endif %}
+            {% if 'phoenix' in visible_servers %}<a href="/server/phoenix" class="{% if server == 'phoenix' %}active{% endif %}">Phoenix</a>{% endif %}
+            <a href="/promotions">Повышения</a>
+            {% if can_view_logs %}
+            <a href="/logs?server={{ server }}&category=applications">Логи</a>
+            {% endif %}
+            <span class="user-badge">{{ user.username }}</span>
+                {% if is_access_admin %}<a href="/settings/access" class="settings-gear" title="Настройки доступа" aria-label="Настройки доступа">⚙</a>{% endif %}
+            <a href="/auth/logout" class="btn btn-outline">Выйти</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        <header class="cabinet-header {{ server }}">
+            <span class="cabinet-emoji">{{ config.servers[server].emoji }}</span>
+            <h1>Заявки в семью — {{ config.servers[server].name }}</h1>
+        </header>
+
+        <div class="filter-tabs">
+            <a href="/cabinet/{{ server }}?status=pending" class="tab {% if status == 'pending' %}active{% endif %}">На рассмотрении</a>
+            <a href="/cabinet/{{ server }}?status=approved" class="tab {% if status == 'approved' %}active{% endif %}">Принятые</a>
+            <a href="/cabinet/{{ server }}?status=rejected" class="tab {% if status == 'rejected' %}active{% endif %}">Отклонённые</a>
+            <a href="/cabinet/{{ server }}?status=callback" class="tab {% if status == 'callback' %}active{% endif %}">Вызваны на обзвон</a>
+            <a href="/cabinet/{{ server }}?status=all" class="tab {% if status == 'all' %}active{% endif %}">Все</a>
+        </div>
+
+        {% if applications %}
+        <div class="applications-list">
+            {% for app in applications %}
+            <a href="/application/{{ app.id }}" class="application-card">
+                <div class="app-header">
+                    <span class="app-name">{{ app.character_name }}</span>
+                    <span class="status-badge status-{{ app.status.value }}">{{ status_labels[app.status.value] }}</span>
+                </div>
+                <div class="app-meta">
+                    <span>Static: {{ app.static_id }}</span>
+                    <span>Возраст: {{ app.ooc_age }}</span>
+                    <span>{{ app.discord_username }}</span>
+                </div>
+                <div class="app-date">{{ app.created_at.strftime('%d.%m.%Y %H:%M') }}</div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>Заявок не найдено</p>
+        </div>
+        {% endif %}
+    </main>
+</body>
+</html>

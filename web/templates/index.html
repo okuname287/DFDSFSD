@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Londo Family — Заявки</title>
+    <link rel="stylesheet" href="/static/css/style.css?v=2026-ui">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">Londo Family</div>
+        <div class="nav-links">
+            {% if user %}
+                {% if 'memphis' in visible_servers %}
+                <a href="/cabinet/memphis">Memphis</a>
+                {% endif %}
+                {% if 'phoenix' in visible_servers %}
+                <a href="/cabinet/phoenix">Phoenix</a>
+                {% endif %}
+                {% if visible_servers %}
+                <a href="/promotions">Повышения</a>
+                {% if can_view_logs %}
+                <a href="/logs">Логи</a>
+                {% endif %}
+                {% endif %}
+                {% if is_access_admin %}<a href="/settings/access">Настройки</a>{% endif %}
+                <span class="user-badge">{{ user.username }}</span>
+                    {% if is_access_admin %}<a href="/settings/access" class="settings-gear" title="Настройки доступа" aria-label="Настройки доступа">⚙</a>{% endif %}
+                <a href="/auth/logout" class="btn btn-outline">Выйти</a>
+            {% else %}
+                <a href="/auth/login" class="btn btn-primary">Войти через Discord</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <main class="container">
+        <section class="hero">
+            <p class="eyebrow">Londo Family</p>
+            <h1>Рабочее пространство</h1>
+            <p class="subtitle">Выберите сервер, чтобы открыть его заявки и запросы на повышение.</p>
+        </section>
+
+        {% if user %}
+        <section class="cabinets-grid">
+            {% if 'memphis' in visible_servers %}
+            <a href="/server/memphis" class="cabinet-card memphis">
+                <span class="cabinet-emoji">{{ config.servers.memphis.emoji }}</span>
+                <h2>{{ config.servers.memphis.name }}</h2>
+                <p>Заявки и повышения Memphis</p>
+            </a>
+            {% endif %}
+            {% if 'phoenix' in visible_servers %}
+            <a href="/server/phoenix" class="cabinet-card phoenix">
+                <span class="cabinet-emoji">{{ config.servers.phoenix.emoji }}</span>
+                <h2>{{ config.servers.phoenix.name }}</h2>
+                <p>Заявки и повышения Phoenix</p>
+            </a>
+            {% endif %}
+        </section>
+        {% else %}
+        <section class="info-block">
+            <h2>Как подать заявку?</h2>
+            <ol>
+                <li>Зайдите на Discord-сервер семьи</li>
+                <li>Используйте команду <code>/заявка</code></li>
+                <li>Заполните форму и приложите скриншот персонажа</li>
+                <li>Ожидайте ответа в личных сообщениях</li>
+            </ol>
+        </section>
+        {% endif %}
+    </main>
+</body>
+</html>

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Логи действий</title>
+    <link rel="stylesheet" href="/static/css/style.css?v=2026-ui">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand"><a href="/">Londo Family</a></div>
+        <div class="nav-links">
+            {% if 'memphis' in visible_servers %}<a href="/cabinet/memphis">Memphis</a>{% endif %}
+            {% if 'phoenix' in visible_servers %}<a href="/cabinet/phoenix">Phoenix</a>{% endif %}
+            <span class="user-badge">{{ user.username }}</span>
+                {% if is_access_admin %}<a href="/settings/access" class="settings-gear" title="Настройки доступа" aria-label="Настройки доступа">⚙</a>{% endif %}
+            <a href="/auth/logout" class="btn btn-outline">Выйти</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        <h1>Логи действий</h1>
+
+        <div class="filter-tabs">
+            {% if visible_servers|length > 1 %}
+            <a href="/logs?server=all&category=applications" class="tab {% if selected_server == 'all' %}active{% endif %}">Все доступные серверы</a>
+            {% endif %}
+            {% if 'memphis' in visible_servers %}
+            <a href="/logs?server=memphis&category=applications" class="tab {% if selected_server == 'memphis' %}active{% endif %}">🌴 Memphis</a>
+            {% endif %}
+            {% if 'phoenix' in visible_servers %}
+            <a href="/logs?server=phoenix&category=applications" class="tab {% if selected_server == 'phoenix' %}active{% endif %}">🔥 Phoenix</a>
+            {% endif %}
+        </div>
+
+        <h2>Активность рекрутов</h2>
+        {% if recruiter_stats %}
+        <table class="logs-table full-width">
+            <thead>
+                <tr>
+                    <th>Рекрут</th>
+                    <th>Всего действий</th>
+                    <th>Принято</th>
+                    <th>Отклонено</th>
+                    <th>Вызвано на обзвон</th>
+                    <th>Последняя активность</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for recruiter in recruiter_stats %}
+                <tr>
+                    <td>{{ recruiter.actor_name }}</td>
+                    <td>{{ recruiter.total }}</td>
+                    <td>{{ recruiter.approved }}</td>
+                    <td>{{ recruiter.rejected }}</td>
+                    <td>{{ recruiter.callbacks }}</td>
+                    <td>{{ recruiter.last_activity.strftime('%d.%m.%Y %H:%M') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state"><p>Активность рекрутов пока не зафиксирована</p></div>
+        {% endif %}
+
+        <div class="filter-tabs logs-category-tabs">
+            {% for category_id, category_name in categories.items() %}
+            <a href="/logs?server={{ selected_server }}&category={{ category_id }}" class="tab active">{{ category_name }}</a>
+            {% endfor %}
+            {% if can_view_bot_errors %}
+            <a href="/logs?server={{ selected_server }}&category=bot_errors" class="tab {% if selected_category == 'bot_errors' %}active{% endif %}">Ошибки бота</a>
+            {% endif %}
+        </div>
+
+        {% if selected_category == 'bot_errors' %}
+        {% if bot_errors %}
+        <table class="logs-table full-width">
+            <thead>
+                <tr><th>Дата</th><th>Событие</th><th>Сообщение</th><th>Пользователь</th><th>Технические детали</th></tr>
+            </thead>
+            <tbody>
+                {% for error in bot_errors %}
+                <tr>
+                    <td>{{ error.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                    <td>{{ error.event_name }}</td>
+                    <td>{{ error.message }}</td>
+                    <td>{{ error.discord_user_id or 'Система' }}</td>
+                    <td><code>{{ error.technical_details or '—' }}</code></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state"><p>Ошибок бота пока не зафиксировано</p></div>
+        {% endif %}
+        {% endif %}
+
+        {% if logs %}
+        <table class="logs-table full-width">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Тип</th>
+                    <th>Запись</th>
+                    <th>Дата</th>
+                    <th>Действие</th>
+                    <th>Кто</th>
+                    <th>Детали</th>
+                    <th>Источник</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td>{{ log.id }}</td>
+                    <td>{{ log_type_labels.get(log.log_type or 'application', 'Заявка') }}</td>
+                    <td>
+                        {% if log.log_type == 'promotion' %}
+                        <a href="/promotions?server={{ log.game_server }}&status=all">Повышение #{{ log.promotion_request_id }}</a>
+                        {% else %}
+                        <a href="/application/{{ log.application_id }}">Заявка #{{ log.application_id }}</a>
+                        {% endif %}
+                    </td>
+                    <td>{{ log.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                    <td>{{ action_labels.get(log.action, log.action) }}</td>
+                    <td>{{ log.actor_name }}</td>
+                    <td>{{ log.details or '—' }}</td>
+                    <td>{{ source_labels.get(log.source, log.source) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state"><p>Логов пока нет</p></div>
+        {% endif %}
+    </main>
+</body>
+</html>

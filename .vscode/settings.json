@@ -1,0 +1,17 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^Set-Location 'c:\\\\londo bot'; python -c \"from fastapi\\.testclient import TestClient; from web\\.main import app; client = TestClient\\(app\\); r = client\\.get\\('/'\\); print\\(r\\.status_code\\); print\\(r\\.text\\[:200\\]\\)\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^Set-Location 'c:\\\\londo bot'; python -m pytest tests/test_app\\.py -q$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^Set-Location 'c:\\\\londo bot'; python -c \"from fastapi\\.testclient import TestClient; from web\\.main import app; from bot\\.views import ApplicationModal; client = TestClient\\(app\\); r = client\\.get\\('/'\\); print\\('root_status=', r\\.status_code\\); print\\('root_has_memphis=', 'Memphis' in r\\.text or 'Phoenix' in r\\.text\\); modal = ApplicationModal\\('memphis'\\); labels = \\[getattr\\(item, 'label', None\\) for item in modal\\.children\\]; print\\('screenshot_field=', 'Ссылка на скриншот персонажа' in labels\\); print\\('modal_count=', len\\(modal\\.children\\)\\)\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    },
+    "qwen-code.codingPlanRegion": "global"
+}
