@@ -340,6 +340,9 @@ code { background: var(--surface); padding: 0.15rem 0.5rem; border-radius: 4px; 
 .settings-field input:focus { border-color: var(--primary); outline: 2px solid rgba(109,124,255,0.2); }
 .settings-actions { display: flex; gap: 0.7rem; margin-top: 0.5rem; }
 .settings-notice { max-width: 760px; margin-bottom: 1rem; padding: 0.85rem 1rem; color: var(--success); background: rgba(66,211,146,0.1); border: 1px solid rgba(66,211,146,0.25); border-radius: 8px; }
+.site-notification { margin-bottom: 1.25rem; padding: 0.9rem 1rem; border: 1px solid; border-radius: 8px; font-weight: 650; }
+.site-notification-success { color: var(--success); background: rgba(66,211,146,0.1); border-color: rgba(66,211,146,0.3); }
+.site-notification-warning { color: var(--warning); background: rgba(244,189,87,0.1); border-color: rgba(244,189,87,0.3); }
 .settings-users { max-width: 900px; margin-top: 3rem; }
 .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
 .section-heading h2 { font-size: 1.45rem; }

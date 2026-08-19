@@ -22,6 +22,9 @@
         </div>
     </nav>
     <main class="container">
+        {% for notification in notifications %}
+        <div class="site-notification site-notification-{{ notification.level }}">{{ notification.message }}</div>
+        {% endfor %}
         <header class="cabinet-header promotions-header {% if server != 'all' %}{{ server }}{% endif %}">
             {% if server != 'all' %}
             <span class="cabinet-emoji">{{ config.servers[server].emoji }}</span>

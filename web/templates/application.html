@@ -17,6 +17,9 @@
     </nav>
 
     <main class="container">
+        {% for notification in notifications %}
+        <div class="site-notification site-notification-{{ notification.level }}">{{ notification.message }}</div>
+        {% endfor %}
         <div class="application-detail">
             <header class="detail-header">
                 <h1>{{ application.character_name }}</h1>

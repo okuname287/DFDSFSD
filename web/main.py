@@ -87,6 +87,15 @@ def format_duration(seconds: int | None) -> str:
         return f"{hours} ч {minutes} мин"
     return f"{minutes} мин {seconds} сек"
 
+
+def add_notification(request: Request, message: str, level: str = "success") -> None:
+    notifications = request.session.setdefault("notifications", [])
+    notifications.append({"message": message, "level": level})
+
+
+def consume_notifications(request: Request) -> list[dict[str, str]]:
+    return request.session.pop("notifications", [])
+
 BASE_DIR = Path(__file__).resolve().parent
 app.add_middleware(SessionMiddleware, secret_key=config["web"]["secret_key"])
 
@@ -461,6 +470,7 @@ async def server_workspace(request: Request, server: str):
             "visible_servers": _visible_servers(user),
             "can_view_logs": _has_logs_access(user),
             "is_access_admin": _is_access_admin(user),
+            "notifications": consume_notifications(request),
         },
     )
 
@@ -555,10 +565,21 @@ async def web_process_promotion(request: Request, request_id: int):
         ),
     )
     if not result:
-        raise HTTPException(status_code=400, detail="Запрос уже обработан")
+        add_notification(request, "Этот запрос на повышение уже был обработан.", "warning")
+        return RedirectResponse(
+            f"/promotions?server={promotion.game_server.value}&status=pending",
+            status_code=303,
+        )
     from shared.notify import notify_promotion_result
     await notify_promotion_result(request_id)
-    return RedirectResponse("/promotions", status_code=303)
+    if form["action"] == "approve":
+        add_notification(request, "Запрос на повышение одобрен.")
+    else:
+        add_notification(request, "Запрос на повышение отклонён.")
+    return RedirectResponse(
+        f"/promotions?server={promotion.game_server.value}&status=pending",
+        status_code=303,
+    )
 
 
 @app.get("/application/{app_id}", response_class=HTMLResponse)
@@ -589,6 +610,7 @@ async def application_detail(request: Request, app_id: int):
             "source_labels": SOURCE_LABELS,
             "format_duration": format_duration,
             "is_access_admin": _is_access_admin(user),
+            "notifications": consume_notifications(request),
         },
     )
 
@@ -618,10 +640,18 @@ async def web_process_action(request: Request, app_id: int):
     )
     result = process_action(app_id, action_data)
     if not result:
-        raise HTTPException(status_code=400, detail="Already processed")
+        add_notification(request, "Эта заявка уже была обработана.", "warning")
+        return RedirectResponse(f"/application/{app_id}", status_code=303)
 
     from shared.notify import notify_user_about_application
     await notify_user_about_application(app_id)
+
+    action_messages = {
+        "approve": "Заявка одобрена.",
+        "reject": "Заявка отклонена.",
+        "callback": "Пользователь вызван на обзвон.",
+    }
+    add_notification(request, action_messages[form["action"]])
 
     return RedirectResponse(f"/application/{app_id}", status_code=303)
 
