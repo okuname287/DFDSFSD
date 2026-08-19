@@ -32,10 +32,6 @@
             <a href="/promotions?server={{ server }}&status=pending" class="tab {% if status == 'pending' %}active{% endif %}">На рассмотрении</a>
             <a href="/promotions?server={{ server }}&status=approved" class="tab {% if status == 'approved' %}active{% endif %}">Одобрены</a>
             <a href="/promotions?server={{ server }}&status=rejected" class="tab {% if status == 'rejected' %}active{% endif %}">Отклонены</a>
-            {% if visible_servers|length > 1 %}
-            {% if 'memphis' in visible_servers %}<a href="/promotions?server=memphis&status={{ status }}" class="tab {% if server == 'memphis' %}active{% endif %}">Memphis</a>{% endif %}
-            {% if 'phoenix' in visible_servers %}<a href="/promotions?server=phoenix&status={{ status }}" class="tab {% if server == 'phoenix' %}active{% endif %}">Phoenix</a>{% endif %}
-            {% endif %}
         </div>
         {% if promotions %}
         <div class="applications-list">

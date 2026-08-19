@@ -173,6 +173,21 @@ def test_pending_promotions_tab_is_active_for_server_view(monkeypatch):
     assert 'href="/promotions?server=memphis&status=pending" class="tab active"' in response.text
 
 
+def test_owner_promotions_has_only_status_filters(monkeypatch):
+    async def current_user(request):
+        return {"id": "123", "username": "owner", "roles": [1538988980446437396]}
+
+    monkeypatch.setattr(web_main, "get_current_user", current_user)
+    monkeypatch.setattr(web_main, "_profile_is_approved", lambda user: True)
+
+    response = TestClient(app).get("/promotions")
+
+    assert response.status_code == 200
+    assert "/promotions?server=memphis&status=" not in response.text
+    assert "/promotions?server=phoenix&status=" not in response.text
+    assert 'href="/promotions?server=all&status=pending" class="tab active"' in response.text
+
+
 def test_cabinet_title_names_the_family_applications_and_server(monkeypatch):
     async def current_user(request):
         return {"id": "123", "username": "memphis", "roles": [1539527961055596625]}
