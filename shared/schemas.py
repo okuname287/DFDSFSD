@@ -93,6 +93,9 @@ class ActionLogResponse(BaseModel):
     action: str
     actor_name: str
     actor_id: str
+    # Fields for the target of the action (application owner)
+    target_discord_user_id: str | None = None
+    target_static_id: str | None = None
     details: str | None
     source: str
     game_server: str | None
