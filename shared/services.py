@@ -254,19 +254,39 @@ def get_bot_errors() -> list[BotError]:
         session.close()
 
 
-def get_site_access_settings() -> dict[str, list[int]]:
+_site_access_cache: dict | None = None
+_site_access_cache_ts: float = 0.0
+
+
+def get_site_access_settings(ttl_seconds: int = 30) -> dict[str, list[int]]:
+    """Return site access settings with a short in-process cache to avoid frequent DB hits.
+
+    TTL defaults to 30 seconds. Caller may pass ttl_seconds=0 to disable caching.
+    """
+    import time
+    global _site_access_cache, _site_access_cache_ts
+    now = time.time()
+    if ttl_seconds and _site_access_cache and (now - _site_access_cache_ts) < ttl_seconds:
+        return _site_access_cache
+
     session = get_session_factory()()
     try:
         rows = session.query(SiteAccessSetting).all()
-        return {
+        result = {
             row.section: [int(value) for value in row.role_ids.split(",") if value.strip().isdigit()]
             for row in rows
         }
+        _site_access_cache = result
+        _site_access_cache_ts = now
+        return result
     finally:
         session.close()
 
 
 def save_site_access_settings(settings: dict[str, list[int]]) -> None:
+    global _site_access_cache, _site_access_cache_ts
+    _site_access_cache = None
+    _site_access_cache_ts = 0.0
     session = get_session_factory()()
     try:
         for section, role_ids in settings.items():
