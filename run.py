@@ -6,6 +6,7 @@ import os
 import signal
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 
@@ -13,10 +14,13 @@ def main() -> None:
     project_dir = Path(__file__).resolve().parent
     env = os.environ.copy()
     env["LONDO_RELOAD"] = "0"
-    processes = [
-        subprocess.Popen([sys.executable, str(project_dir / "run_web.py")], cwd=project_dir, env=env),
-        subprocess.Popen([sys.executable, str(project_dir / "run_bot.py")], cwd=project_dir, env=env),
-    ]
+    web_process = subprocess.Popen(
+        [sys.executable, str(project_dir / "run_web.py")], cwd=project_dir, env=env
+    )
+    bot_process = subprocess.Popen(
+        [sys.executable, str(project_dir / "run_bot.py")], cwd=project_dir, env=env
+    )
+    processes = [web_process, bot_process]
 
     def stop_processes(signum, _frame) -> None:
         for process in processes:
@@ -31,11 +35,24 @@ def main() -> None:
 
     try:
         while True:
-            for process in processes:
-                exit_code = process.poll()
-                if exit_code is not None:
-                    stop_processes(signal.SIGTERM, None)
-            signal.pause()
+            web_exit_code = web_process.poll()
+            if web_exit_code is not None:
+                print(f"Web process stopped with exit code {web_exit_code}", flush=True)
+                stop_processes(signal.SIGTERM, None)
+
+            bot_exit_code = bot_process.poll()
+            if bot_exit_code is not None:
+                print(
+                    f"Bot process stopped with exit code {bot_exit_code}; restarting",
+                    flush=True,
+                )
+                bot_process = subprocess.Popen(
+                    [sys.executable, str(project_dir / "run_bot.py")],
+                    cwd=project_dir,
+                    env=env,
+                )
+                processes[1] = bot_process
+            time.sleep(1)
     finally:
         stop_processes(signal.SIGTERM, None)
 
