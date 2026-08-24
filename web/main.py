@@ -244,7 +244,42 @@ def consume_notifications(request: Request) -> list[dict[str, str]]:
 BASE_DIR = Path(__file__).resolve().parent
 app.add_middleware(SessionMiddleware, secret_key=config["web"]["secret_key"])
 
+# Initialize Jinja2 templates, but provide a safe fallback for missing templates
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+try:
+    from jinja2 import ChoiceLoader, DictLoader
+
+    templates_dir = BASE_DIR / "templates"
+    # If the critical roster.html template is missing (e.g. not packaged into the image),
+    # add a minimal fallback so the app doesn't crash with TemplateNotFound.
+    if not (templates_dir / "roster.html").exists():
+        fallback_roster = """<!DOCTYPE html>
+<html lang=\"ru\"> 
+<head>
+  <meta charset=\"utf-8\"> 
+  <title>Состав семьи</title>
+</head>
+<body>
+  <h1>Состав семьи (резервный шаблон)</h1>
+  {% if roster %}
+    {% for group in roster %}
+      <h2>{{ group.label }}</h2>
+      <ul>
+        {% for member in group.members %}
+          <li>{{ member.display_name }} (@{{ member.username }})</li>
+        {% endfor %}
+      </ul>
+    {% endfor %}
+  {% else %}
+    <p>Не удалось загрузить состав семьи.</p>
+  {% endif %}
+</body>
+</html>"""
+        templates.env.loader = ChoiceLoader([templates.env.loader, DictLoader({"roster.html": fallback_roster})])
+except Exception:
+    # If Jinja2 internals aren't available for some reason, continue without the fallback.
+    pass
+
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 
