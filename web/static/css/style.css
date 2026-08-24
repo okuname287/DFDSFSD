@@ -165,11 +165,38 @@ code { background: var(--surface); padding: 0.15rem 0.5rem; border-radius: 4px; 
 .cabinet-card.memphis:hover { border-color: var(--memphis); }
 .cabinet-card.phoenix:hover { border-color: var(--phoenix); }
 .cabinet-emoji { font-size: 3rem; display: block; margin-bottom: 0.5rem; }
-.server-name-row { display: inline-flex; align-items: center; gap: 0.45rem; }
-.server-logo { display: block; object-fit: contain; border-radius: 8px; background: rgba(255, 255, 255, 0.02); }
-.server-logo-small { width: 18px; height: 18px; }
-.server-logo-header { width: 52px; height: 52px; }
-.server-logo-large { width: 72px; height: 72px; margin: 0 auto 0.9rem; }
+.server-name-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    white-space: nowrap;
+    line-height: 1;
+}
+.server-logo {
+    display: block;
+    object-fit: contain;
+    flex-shrink: 0;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.02);
+    image-rendering: auto;
+}
+.server-logo-small {
+    width: 18px;
+    height: 18px;
+}
+.server-logo-header {
+    width: 42px;
+    height: 42px;
+}
+.server-logo-large {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 0.9rem;
+}
+.nav-links a { display: inline-flex; align-items: center; }
+.tab .server-name-row { line-height: 1.1; }
+.cabinet-header { gap: 0.85rem; }
+.workspace-heading h1 .server-name-row { gap: 0.7rem; }
 .cabinet-card h2 { margin: 0.35rem 0 0.25rem; font-size: 1.3rem; }
 .cabinet-card p { color: var(--text-muted); font-size: 0.9rem; }
 
