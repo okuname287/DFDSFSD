@@ -733,18 +733,26 @@ async def logs_page(request: Request, server: str = "all", category: str = "appl
 
     bot_errors = get_bot_errors() if category == "bot_errors" else []
 
-    # If a discord_user_id is provided, filter logs by that discord id for each selected server
-    if discord_user_id:
+    if category == "bot_errors":
+        all_logs = []
+    elif discord_user_id:
         all_logs = [
             log
             for selected_server in selected_servers
-            for log in get_logs(game_server=selected_server, discord_user_id=discord_user_id, log_type="application" if category == "applications" else "promotion" if category == "promotions" else None)
+            for log in get_logs(
+                game_server=selected_server,
+                actor_discord_user_id=discord_user_id,
+                log_type="application" if category == "applications" else "promotion" if category == "promotions" else None,
+            )
         ]
     else:
         all_logs = [
             log
             for selected_server in selected_servers
-            for log in get_logs(game_server=selected_server, log_type="application" if category == "applications" else "promotion" if category == "promotions" else None)
+            for log in get_logs(
+                game_server=selected_server,
+                log_type="application" if category == "applications" else "promotion" if category == "promotions" else None,
+            )
         ]
     stats = {
         "logins": sum(
