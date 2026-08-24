@@ -180,9 +180,10 @@ def get_logs(
     promotion_request_id: int | None = None,
     game_server: str | None = None,
     discord_user_id: str | None = None,
+    actor_discord_user_id: str | None = None,
     log_type: str | None = None,
 ) -> list[ActionLog]:
-    """Return action logs. Can filter by application_id, promotion_request_id, game_server, target discord_user_id, or log type.
+    """Return action logs. Can filter by application_id, promotion_request_id, game_server, target discord_user_id, actor discord_user_id, or log type.
 
     Static ID is no longer used for searching — searches are performed only by Discord ID.
     """
@@ -197,6 +198,8 @@ def get_logs(
             query = query.filter(ActionLog.game_server == game_server)
         if discord_user_id:
             query = query.filter(ActionLog.target_discord_user_id == str(discord_user_id))
+        if actor_discord_user_id:
+            query = query.filter(ActionLog.actor_id == str(actor_discord_user_id))
         if log_type:
             query = query.filter(ActionLog.log_type == log_type)
 
