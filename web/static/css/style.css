@@ -180,10 +180,8 @@ code { background: var(--surface); padding: 0.15rem 0.5rem; border-radius: 4px; 
     background: rgba(255, 255, 255, 0.02);
     image-rendering: auto;
 }
-.server-logo-small {
-    width: 32px;
-    height: 32px;
-}
+.server-logo.server-logo-small,
+.server-logo-small,
 .server-logo-header {
     width: 32px;
     height: 32px;
