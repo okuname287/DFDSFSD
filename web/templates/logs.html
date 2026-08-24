@@ -128,7 +128,7 @@
                     <td>{{ log_type_labels.get(log.log_type or 'application', 'Заявка') }}</td>
                     <td>
                         {% if log.log_type == 'promotion' %}
-                        <a href="/promotions?server={{ log.game_server }}&status=all">Повышение #{{ log.promotion_request_id }}</a>
+                        <a href="/promotion/{{ log.promotion_request_id }}">Повышение #{{ log.promotion_request_id }}</a>
                         {% else %}
                         <a href="/application/{{ log.application_id }}">Заявка #{{ log.application_id }}</a>
                         {% endif %}
@@ -136,7 +136,7 @@
                     <td>{{ log.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
                     <td>{{ action_labels.get(log.action, log.action) }}</td>
                     <td>{{ log.target_discord_user_id or '—' }}</td>
-                    <td>{{ log.actor_name }}</td>
+                    <td>{{ log.actor_name }} <span class="muted">({{ log.actor_id or '—' }})</span></td>
                     <td>{{ log.details or '—' }}</td>
                     <td>{{ source_labels.get(log.source, log.source) }}</td>
                 </tr>
