@@ -39,7 +39,7 @@
         {% if promotions %}
         <div class="applications-list">
             {% for promotion in promotions %}
-            <article class="application-card">
+            <article class="application-card" data-href="/promotion/{{ promotion.id }}" tabindex="0" role="button" aria-label="Открыть запрос на повышение {{ promotion.character_name }}">
                 <div class="app-header">
                     <div>
                         <span class="app-name"><a href="/promotion/{{ promotion.id }}">{{ promotion.character_name }}</a></span>
@@ -92,5 +92,26 @@
         <div class="empty-state"><p>Запросов на повышение не найдено</p></div>
         {% endif %}
     </main>
+    <script>
+        document.querySelectorAll('.application-card[data-href]').forEach((card) => {
+            const navigate = () => {
+                window.location.href = card.dataset.href;
+            };
+
+            card.addEventListener('click', (event) => {
+                if (event.target.closest('a, button, form, input, textarea, select, label, dialog')) {
+                    return;
+                }
+                navigate();
+            });
+
+            card.addEventListener('keydown', (event) => {
+                if ((event.key === 'Enter' || event.key === ' ') && !event.target.closest('a, button, input, textarea, select')) {
+                    event.preventDefault();
+                    navigate();
+                }
+            });
+        });
+    </script>
 </body>
 </html>
