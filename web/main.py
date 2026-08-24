@@ -231,11 +231,10 @@ def _has_server_access(user: dict, server: str) -> bool:
         "memphis": ("recruiter_memphis", "curator_memphis", "depowner_memphis"),
         "phoenix": ("recruiter_phoenix", "curator_phoenix", "depowner_phoenix"),
     }
+    # Allow access only when the user has a role for this specific server
     if any(_has_role(roles, role_key) for role_key in server_roles.get(server, ())):
         return True
-    # Staff roles (recruiters, curators, depowners) should have server access by default.
-    if _has_staff_role(roles):
-        return True
+    # Do not grant access based on presence of any staff role for other servers.
     allowed_roles = config["discord"].get("server_access_roles", {}).get(server, [])
     return bool(set(roles) & set(allowed_roles))
 
@@ -618,6 +617,38 @@ async def application_detail(request: Request, app_id: int):
             "action_labels": ACTION_LABELS,
             "source_labels": SOURCE_LABELS,
             "format_duration": format_duration,
+            "is_access_admin": _is_access_admin(user),
+            "notifications": consume_notifications(request),
+        },
+    )
+
+
+# Promotion detail page (mirror of application detail with promotion fields)
+@app.get("/promotion/{request_id}", response_class=HTMLResponse)
+async def promotion_detail(request: Request, request_id: int):
+    user = await require_reviewer(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    promotion = get_promotion(request_id)
+    if not promotion:
+        raise HTTPException(status_code=404)
+    if not _has_section_access(user, "promotions") or not _has_server_access(user, promotion.game_server.value):
+        raise HTTPException(status_code=403, detail="Нет доступа к этому запросу на повышение")
+    logs = get_logs(promotion_request_id=request_id)
+    return templates.TemplateResponse(
+        request,
+        "promotion.html",
+        {
+            "user": user,
+            "config": config,
+            "promotion": promotion,
+            "logs": logs,
+            "can_review": _has_recruiter_role(user["roles"]) or _has_curator_or_depowner_role(user["roles"]) or _has_global_site_access(user),
+            "can_view_logs": _user_is_reviewer(user),
+            "promotion_status_labels": PROMOTION_STATUS_LABELS,
+            "action_labels": ACTION_LABELS,
+            "source_labels": SOURCE_LABELS,
+            "promotion_labels": {"baby_londo": "Baby Londo", "young_londo": "Young Londo", "main": "Main", "recruit": "Recruit"},
             "is_access_admin": _is_access_admin(user),
             "notifications": consume_notifications(request),
         },
