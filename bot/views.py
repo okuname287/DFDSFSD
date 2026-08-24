@@ -338,7 +338,7 @@ class PromotionModal(SafeModal, title="Запрос на повышение"):
         super().__init__()
         self.target = target
         self.character_name = discord.ui.TextInput(
-            label="Игровое имя",
+            label="Игровой никнейм на сервере",
             placeholder="Okuname",
             max_length=128,
             required=True,
@@ -501,7 +501,7 @@ class ApplicationModal(SafeModal, title="Заявка в семью Londo"):
         server_name = config["servers"][game_server]["name"]
 
         self.character_name = discord.ui.TextInput(
-            label="Игровое имя",
+            label="Игровое имя и фамилия",
             placeholder="Okuname",
             max_length=256,
             required=True,
