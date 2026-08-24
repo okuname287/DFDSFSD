@@ -242,12 +242,7 @@ def _has_server_access(user: dict, server: str) -> bool:
         "memphis": ("recruiter_memphis", "curator_memphis", "depowner_memphis"),
         "phoenix": ("recruiter_phoenix", "curator_phoenix", "depowner_phoenix"),
     }
-    # Allow access only when the user has a role for this specific server
-    if any(_has_role(roles, role_key) for role_key in server_roles.get(server, ())):
-        return True
-    # Do not grant access based on presence of any staff role for other servers.
-    allowed_roles = config["discord"].get("server_access_roles", {}).get(server, [])
-    return bool(set(roles) & set(allowed_roles))
+    return any(_has_role(roles, role_key) for role_key in server_roles.get(server, ()))
 
 
 def _visible_servers(user: dict) -> list[str]:
