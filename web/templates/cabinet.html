@@ -10,8 +10,8 @@
     <nav class="navbar">
         <div class="nav-brand"><a href="/">Londo Family</a></div>
         <div class="nav-links">
-            {% if 'memphis' in visible_servers %}<a href="/server/memphis" class="{% if server == 'memphis' %}active{% endif %}">Memphis</a>{% endif %}
-            {% if 'phoenix' in visible_servers %}<a href="/server/phoenix" class="{% if server == 'phoenix' %}active{% endif %}">Phoenix</a>{% endif %}
+            {% if 'memphis' in visible_servers %}<a href="/server/memphis" class="{% if server == 'memphis' %}active{% endif %}"><span class="server-name-row"><img class="server-logo server-logo-small" src="/memphis.png" alt="Memphis logo">Memphis</span></a>{% endif %}
+            {% if 'phoenix' in visible_servers %}<a href="/server/phoenix" class="{% if server == 'phoenix' %}active{% endif %}"><span class="server-name-row"><img class="server-logo server-logo-small" src="/phoenix.png" alt="Phoenix logo">Phoenix</span></a>{% endif %}
             <a href="/promotions">Повышения</a>
             {% if can_view_logs %}
             <a href="/logs?server={{ server }}&category=applications">Логи</a>
@@ -24,7 +24,7 @@
 
     <main class="container">
         <header class="cabinet-header {{ server }}">
-            <span class="cabinet-emoji">{{ config.servers[server].emoji }}</span>
+            <img class="server-logo server-logo-header" src="/{{ server }}.png" alt="{{ config.servers[server].name }} logo">
             <h1>Заявки в семью — {{ config.servers[server].name }}</h1>
         </header>
 
