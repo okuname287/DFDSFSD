@@ -77,6 +77,151 @@ ACTION_LABELS = {
 }
 SOURCE_LABELS = {"web": "Сайт", "discord": "Discord"}
 LOG_TYPE_LABELS = {"application": "Заявка", "promotion": "Повышение"}
+ROSTER_GROUP_ORDER = [
+    "Owner",
+    "Dep. owner",
+    "Куратор рекрутов",
+    "High staff",
+    "Рекрутёр",
+    "Recruit",
+    "Main",
+    "Londest Londo",
+    "Londo",
+    "Baby Londo",
+    "Young Londo",
+    "Newbie",
+    "Прочие роли",
+]
+
+
+def _role_bucket_label(role_name: str, server: str) -> str | None:
+    if not role_name:
+        return None
+    lowered = role_name.lower().strip()
+    if "owner" in lowered or "chief moderator" in lowered:
+        return "Owner"
+    if "dep. owner" in lowered or "dep owner" in lowered or "depowner" in lowered:
+        return "Dep. owner"
+    if "curator" in lowered:
+        return "Куратор рекрутов"
+    if "recruiter" in lowered:
+        return "Рекрутёр"
+    if "high staff" in lowered or "senior staff" in lowered:
+        return "High staff"
+    if lowered in {"recruit", "recruit londo"} or "recruit" in lowered and "recruiter" not in lowered:
+        return "Recruit"
+    if "main" in lowered and "londo" not in lowered:
+        return "Main"
+    if "londest londo" in lowered:
+        return "Londest Londo"
+    if "baby londo" in lowered:
+        return "Baby Londo"
+    if "young londo" in lowered:
+        return "Young Londo"
+    if "newbie" in lowered:
+        return "Newbie"
+    if "londo" in lowered:
+        return "Londo"
+    return None
+
+
+async def _fetch_guild_roster(server: str) -> list[dict]:
+    guild_id = config["discord"].get("guild_id")
+    token = config["discord"].get("token")
+    if not guild_id or not token:
+        return []
+
+    headers = {"Authorization": f"Bot {token}"}
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        role_resp = await client.get(f"{DISCORD_API}/guilds/{guild_id}/roles", headers=headers)
+        if role_resp.status_code != 200:
+            log_bot_error(
+                "guild_roles_fetch",
+                "Не удалось получить список ролей Discord для состава семьи.",
+                f"HTTP {role_resp.status_code}: {role_resp.text[:500]}",
+            )
+            return []
+        role_name_by_id = {
+            int(role.get("id", 0)): role.get("name") or "Роль"
+            for role in role_resp.json() or []
+            if role.get("id")
+        }
+
+        members: list[dict] = []
+        after = None
+        while True:
+            params = {"limit": 1000}
+            if after:
+                params["after"] = str(after)
+            members_resp = await client.get(
+                f"{DISCORD_API}/guilds/{guild_id}/members",
+                headers=headers,
+                params=params,
+            )
+            if members_resp.status_code != 200:
+                log_bot_error(
+                    "guild_members_fetch",
+                    "Не удалось получить список участников Discord для состава семьи.",
+                    f"HTTP {members_resp.status_code}: {members_resp.text[:500]}",
+                )
+                return []
+            batch = members_resp.json() or []
+            if not batch:
+                break
+            members.extend(batch)
+            if len(batch) < 1000:
+                break
+            after = batch[-1].get("user", {}).get("id")
+
+    roster_by_group: dict[str, list[dict]] = {label: [] for label in ROSTER_GROUP_ORDER}
+    for member in members:
+        user = member.get("user") or {}
+        user_id = user.get("id")
+        if not user_id:
+            continue
+        raw_roles = member.get("roles", []) or []
+        role_names = [role_name_by_id.get(int(role_id), f"Роль {role_id}") for role_id in raw_roles if str(role_id).isdigit()]
+        display_name = member.get("nick") or user.get("global_name") or user.get("username") or "Неизвестный"
+        username = user.get("username") or "unknown"
+        member_entry = {
+            "discord_id": str(user_id),
+            "username": username,
+            "display_name": display_name,
+            "roles": sorted(role_names, key=lambda item: item.lower()),
+            "role_labels": [],
+        }
+        for role_name in member_entry["roles"]:
+            label = _role_bucket_label(role_name, server)
+            if label:
+                member_entry["role_labels"].append(label)
+                roster_by_group.setdefault(label, []).append(
+                    {
+                        "discord_id": member_entry["discord_id"],
+                        "display_name": member_entry["display_name"],
+                        "username": member_entry["username"],
+                        "roles": member_entry["roles"],
+                    }
+                )
+        if not member_entry["role_labels"]:
+            roster_by_group.setdefault("Прочие роли", []).append(
+                {
+                    "discord_id": member_entry["discord_id"],
+                    "display_name": member_entry["display_name"],
+                    "username": member_entry["username"],
+                    "roles": member_entry["roles"],
+                }
+            )
+
+    for label in list(roster_by_group):
+        roster_by_group[label] = sorted(
+            roster_by_group[label],
+            key=lambda item: (item["display_name"] or "").lower(),
+        )
+    return [
+        {"label": label, "members": roster_by_group.get(label, [])}
+        for label in ROSTER_GROUP_ORDER
+        if roster_by_group.get(label)
+    ]
 
 
 def format_duration(seconds: int | None) -> str:
@@ -485,6 +630,31 @@ async def server_workspace(request: Request, server: str):
             "can_view_logs": _has_logs_access(user),
             "is_access_admin": _is_access_admin(user),
             "notifications": consume_notifications(request),
+        },
+    )
+
+
+@app.get("/roster/{server}", response_class=HTMLResponse)
+async def roster_page(request: Request, server: str):
+    user = await require_reviewer(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    if server not in ("memphis", "phoenix"):
+        raise HTTPException(status_code=404)
+    if not _has_server_access(user, server):
+        raise HTTPException(status_code=403, detail="Нет доступа к составу этого сервера")
+    roster = await _fetch_guild_roster(server)
+    return templates.TemplateResponse(
+        request,
+        "roster.html",
+        {
+            "user": user,
+            "config": config,
+            "server": server,
+            "visible_servers": _visible_servers(user),
+            "roster": roster,
+            "can_view_logs": _has_logs_access(user),
+            "is_access_admin": _is_access_admin(user),
         },
     )
 
