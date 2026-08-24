@@ -218,3 +218,18 @@ def test_promotion_modal_has_character_name_field():
     modal = PromotionModal("young_londo")
     labels = [getattr(item, "label", None) for item in modal.children]
     assert "Игровой никнейм на сервере" in labels
+
+
+def test_logs_page_shows_promotions_category_and_active_tab(monkeypatch):
+    async def current_user(request):
+        return {"id": "123", "username": "owner", "roles": [1538988980446437396]}
+
+    monkeypatch.setattr(web_main, "get_current_user", current_user)
+    monkeypatch.setattr(web_main, "_profile_is_approved", lambda user: True)
+
+    response = TestClient(app).get("/logs?server=all&category=promotions")
+
+    assert response.status_code == 200
+    assert '/logs?server=all&category=applications' in response.text
+    assert '/logs?server=all&category=promotions' in response.text
+    assert 'class="tab active">Повышения</a>' in response.text
