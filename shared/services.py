@@ -180,8 +180,9 @@ def get_logs(
     promotion_request_id: int | None = None,
     game_server: str | None = None,
     discord_user_id: str | None = None,
+    log_type: str | None = None,
 ) -> list[ActionLog]:
-    """Return action logs. Can filter by application_id, promotion_request_id, game_server, or target discord_user_id.
+    """Return action logs. Can filter by application_id, promotion_request_id, game_server, target discord_user_id, or log type.
 
     Static ID is no longer used for searching — searches are performed only by Discord ID.
     """
@@ -196,7 +197,16 @@ def get_logs(
             query = query.filter(ActionLog.game_server == game_server)
         if discord_user_id:
             query = query.filter(ActionLog.target_discord_user_id == str(discord_user_id))
-        return query.order_by(ActionLog.created_at.desc()).all()
+        if log_type:
+            query = query.filter(ActionLog.log_type == log_type)
+
+        logs = query.order_by(ActionLog.created_at.desc()).all()
+        for log in logs:
+            if log.log_type == "promotion" and not log.target_discord_user_id and log.promotion_request_id:
+                promotion = session.get(PromotionRequest, log.promotion_request_id)
+                if promotion:
+                    log.target_discord_user_id = promotion.discord_user_id
+        return logs
     finally:
         session.close()
 
@@ -460,6 +470,7 @@ def process_promotion(request_id: int, action) -> PromotionRequest | None:
                 action=action.action,
                 actor_name=action.actor_name,
                 actor_id=action.actor_id,
+                target_discord_user_id=request.discord_user_id,
                 details=request.rejection_reason,
                 source=action.source,
                 game_server=request.game_server.value,
