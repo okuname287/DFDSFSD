@@ -182,6 +182,7 @@ def get_logs(
     discord_user_id: str | None = None,
     actor_discord_user_id: str | None = None,
     log_type: str | None = None,
+    limit: int | None = None,
 ) -> list[ActionLog]:
     """Return action logs. Can filter by application_id, promotion_request_id, game_server, target discord_user_id, actor discord_user_id, or log type.
 
@@ -203,7 +204,11 @@ def get_logs(
         if log_type:
             query = query.filter(ActionLog.log_type == log_type)
 
-        logs = query.order_by(ActionLog.created_at.desc()).all()
+        query = query.order_by(ActionLog.created_at.desc())
+        if limit is not None:
+            query = query.limit(limit)
+
+        logs = query.all()
         for log in logs:
             if log.log_type == "promotion" and not log.target_discord_user_id and log.promotion_request_id:
                 promotion = session.get(PromotionRequest, log.promotion_request_id)
