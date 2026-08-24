@@ -12,10 +12,10 @@
         <div class="nav-links">
             {% if user %}
                 {% if 'memphis' in visible_servers %}
-                <a href="/cabinet/memphis">Memphis</a>
+                <a href="/cabinet/memphis"><span class="server-name-row"><img class="server-logo server-logo-small" src="/memphis.png" alt="Memphis logo">Memphis</span></a>
                 {% endif %}
                 {% if 'phoenix' in visible_servers %}
-                <a href="/cabinet/phoenix">Phoenix</a>
+                <a href="/cabinet/phoenix"><span class="server-name-row"><img class="server-logo server-logo-small" src="/phoenix.png" alt="Phoenix logo">Phoenix</span></a>
                 {% endif %}
                 {% if visible_servers %}
                 <a href="/promotions">Повышения</a>
@@ -44,14 +44,14 @@
         <section class="cabinets-grid">
             {% if 'memphis' in visible_servers %}
             <a href="/server/memphis" class="cabinet-card memphis">
-                <span class="cabinet-emoji">{{ config.servers.memphis.emoji }}</span>
+                <img class="server-logo server-logo-large" src="/memphis.png" alt="Memphis logo">
                 <h2>{{ config.servers.memphis.name }}</h2>
                 <p>Заявки и повышения Memphis</p>
             </a>
             {% endif %}
             {% if 'phoenix' in visible_servers %}
             <a href="/server/phoenix" class="cabinet-card phoenix">
-                <span class="cabinet-emoji">{{ config.servers.phoenix.emoji }}</span>
+                <img class="server-logo server-logo-large" src="/phoenix.png" alt="Phoenix logo">
                 <h2>{{ config.servers.phoenix.name }}</h2>
                 <p>Заявки и повышения Phoenix</p>
             </a>
