@@ -717,7 +717,7 @@ async def logs_page(request: Request, server: str = "all", category: str = "appl
         selected_servers = [server]
     else:
         raise HTTPException(status_code=404)
-    if category not in ("applications", "bot_errors"):
+    if category not in ("applications", "promotions", "bot_errors"):
         raise HTTPException(status_code=404)
 
     bot_errors = get_bot_errors() if category == "bot_errors" else []
@@ -727,10 +727,14 @@ async def logs_page(request: Request, server: str = "all", category: str = "appl
         all_logs = [
             log
             for selected_server in selected_servers
-            for log in get_logs(game_server=selected_server, discord_user_id=discord_user_id)
+            for log in get_logs(game_server=selected_server, discord_user_id=discord_user_id, log_type="application" if category == "applications" else "promotion" if category == "promotions" else None)
         ]
     else:
-        all_logs = [log for selected_server in selected_servers for log in get_logs(game_server=selected_server)]
+        all_logs = [
+            log
+            for selected_server in selected_servers
+            for log in get_logs(game_server=selected_server, log_type="application" if category == "applications" else "promotion" if category == "promotions" else None)
+        ]
     stats = {
         "logins": sum(
             get_login_count(config["discord"].get("server_access_roles", {}).get(selected_server, []))
@@ -765,7 +769,7 @@ async def logs_page(request: Request, server: str = "all", category: str = "appl
             "stats": stats,
             "recruiter_stats": recruiter_stats,
             "selected_category": category,
-            "categories": {"applications": "Заявки"},
+            "categories": {"applications": "Заявки", "promotions": "Повышения"},
             "log_type_labels": LOG_TYPE_LABELS,
             "bot_errors": bot_errors,
             "is_access_admin": _is_access_admin(user),
