@@ -303,13 +303,14 @@ async def notify_user_about_application(application_id: int) -> None:
             if role_id and role_id not in promotion_role_ids:
                 await _add_role(int(app.discord_user_id), role_id)
 
-        # Give explicit newbie role on approval
-        newbie_role_id = 1539607514688258118
-        try:
-            await _add_role(int(app.discord_user_id), newbie_role_id)
-        except Exception:
-            # Best-effort: failure to add newbie role shouldn't crash the flow
-            pass
+        # Give explicit newbie role on approval from the configured promotion-role map.
+        newbie_role_id = promotion_role_map.get("newbie_londo")
+        if newbie_role_id:
+            try:
+                await _add_role(int(app.discord_user_id), int(newbie_role_id))
+            except Exception:
+                # Best-effort: failure to add newbie role shouldn't crash the flow
+                pass
         await _set_nickname(
             int(app.discord_user_id),
             f"{app.character_name} | {app.static_id}",
