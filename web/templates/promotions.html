@@ -3,94 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Повышения — Londo</title>
+    <title>Повышение #{{ promotion.id }}</title>
     <link rel="stylesheet" href="/static/css/style.css?v=2026-ui">
 </head>
 <body>
     <nav class="navbar">
         <div class="nav-brand"><a href="/">Londo Family</a></div>
         <div class="nav-links">
-            {% if 'memphis' in visible_servers %}<a href="/server/memphis">Memphis</a>{% endif %}
-            {% if 'phoenix' in visible_servers %}<a href="/server/phoenix">Phoenix</a>{% endif %}
-            <a href="/promotions" class="active">Повышения</a>
-            {% if can_view_logs %}
-            <a href="/logs">Логи</a>
-            {% endif %}
+            <a href="/promotions?server={{ promotion.game_server.value }}">← Назад</a>
             <span class="user-badge">{{ user.username }}</span>
                 {% if is_access_admin %}<a href="/settings/access" class="settings-gear" title="Настройки доступа" aria-label="Настройки доступа">⚙</a>{% endif %}
-            <a href="/auth/logout" class="btn btn-outline">Выйти</a>
         </div>
     </nav>
+
     <main class="container">
         {% for notification in notifications %}
         <div class="site-notification site-notification-{{ notification.level }}">{{ notification.message }}</div>
         {% endfor %}
-        <header class="cabinet-header promotions-header {% if server != 'all' %}{{ server }}{% endif %}">
-            {% if server != 'all' %}
-            <span class="cabinet-emoji">{{ config.servers[server].emoji }}</span>
-            {% endif %}
-            <h1>Запросы на повышение{% if server != 'all' %} {{ config.servers[server].name }}{% endif %}</h1>
-        </header>
-        <div class="filter-tabs">
-            <a href="/promotions?server={{ server }}&status=pending" class="tab {% if status == 'pending' %}active{% endif %}">На рассмотрении</a>
-            <a href="/promotions?server={{ server }}&status=approved" class="tab {% if status == 'approved' %}active{% endif %}">Одобрены</a>
-            <a href="/promotions?server={{ server }}&status=rejected" class="tab {% if status == 'rejected' %}active{% endif %}">Отклонены</a>
-        </div>
-        {% if promotions %}
-        <div class="applications-list">
-            {% for promotion in promotions %}
-            <article class="application-card">
-                <div class="app-header">
-                    <div>
-                        <span class="app-name">{{ promotion.character_name }}</span>
-                        <p class="app-date">Discord: {{ promotion.discord_username }}</p>
-                        <p class="app-date">Запрос #{{ promotion.id }} • {{ config.servers[promotion.game_server.value].name }}</p>
-                    </div>
-                    <span class="status-badge status-{{ promotion.status.value }}">{{ promotion_status_labels[promotion.status.value] }}</span>
-                </div>
-                <div class="app-meta">
-                    <span>Цель: <strong>{{ promotion_labels[promotion.target] }}</strong></span>
-                    <a href="{{ promotion.evidence_url }}" target="_blank" rel="noreferrer">Открыть доказательство</a>
-                </div>
-                {% if promotion.status.value == 'pending' %}
-                <div class="action-panel promotion-actions">
-                    <h3>Действия</h3>
-                    <div class="action-buttons">
-                    <form method="post" action="/promotion/{{ promotion.id }}/action" class="inline-form">
-                        <input type="hidden" name="action" value="approve">
-                        <button class="btn btn-success" type="submit">✅ Одобрить и выдать роль</button>
-                    </form>
-                    <button type="button" class="btn btn-danger" onclick="document.getElementById('promotion-reject-modal-{{ promotion.id }}').showModal()">❌ Отклонить</button>
-                    </div>
+        <div class="application-detail">
+            <header class="detail-header">
+                <h1>{{ promotion.character_name }}</h1>
+                <span class="status-badge status-{{ promotion.status.value }}">{{ promotion_status_labels[promotion.status.value] }}</span>
+            </header>
+
+            <div class="detail-grid">
+                <div class="detail-section">
+                    <h3>Информация</h3>
+                    <dl>
+                        <dt>Запрос</dt><dd>#{{ promotion.id }}</dd>
+                        <dt>Сервер</dt><dd>{{ config.servers[promotion.game_server.value].name }}</dd>
+                        <dt>Discord</dt><dd>{{ promotion.discord_username }} ({{ promotion.discord_user_id }})</dd>
+                        <dt>Цель повышения</dt><dd>{{ promotion_labels[promotion.target] }}</dd>
+                        <dt>Дата подачи</dt><dd>{{ promotion.created_at.strftime('%d.%m.%Y %H:%M') }}</dd>
+                        {% if promotion.reviewed_by %}
+                        <dt>Рассмотрел</dt><dd>{{ promotion.reviewed_by }}</dd>
+                        {% endif %}
+                        {% if promotion.rejection_reason %}
+                        <dt>Причина отклонения</dt><dd>{{ promotion.rejection_reason }}</dd>
+                        {% endif %}
+                    </dl>
                 </div>
 
-                <dialog id="promotion-reject-modal-{{ promotion.id }}" class="modal">
-                    <form method="post" action="/promotion/{{ promotion.id }}/action">
-                        <input type="hidden" name="action" value="reject">
-                        <h3>Причина отклонения</h3>
-                        <div class="reason-list">
-                            {% for reason in config.promotion_rejection_reasons %}
-                            <label class="reason-option">
-                                <input type="radio" name="rejection_reason_id" value="{{ reason.id }}" required
-                                    {% if reason.id == 'other' %}onchange="document.getElementById('promotion-custom-reason-{{ promotion.id }}').style.display='block'"{% else %}onchange="document.getElementById('promotion-custom-reason-{{ promotion.id }}').style.display='none'"{% endif %}>
-                                {{ reason.label }}
-                            </label>
-                            {% endfor %}
-                        </div>
-                        <textarea id="promotion-custom-reason-{{ promotion.id }}" name="custom_reason" placeholder="Укажите свою причину..." style="display:none" rows="3"></textarea>
-                        <div class="modal-actions">
-                            <button type="button" class="btn btn-outline" onclick="document.getElementById('promotion-reject-modal-{{ promotion.id }}').close()">Отмена</button>
-                            <button type="submit" class="btn btn-danger">Отклонить</button>
-                        </div>
+                <div class="detail-section">
+                    <h3>Доказательства</h3>
+                    {% if promotion.evidence_url %}
+                    <p class="text-block"><a href="{{ promotion.evidence_url }}" target="_blank" rel="noreferrer">Открыть доказательство</a></p>
+                    {% else %}
+                    <p class="text-block">Доказательства не прикреплены.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if can_review and promotion.status.value == 'pending' %}
+            <div class="action-panel">
+                <h3>Действия</h3>
+                <div class="action-buttons">
+                    <form method="post" action="/promotion/{{ promotion.id }}/action" class="inline-form">
+                        <input type="hidden" name="action" value="approve">
+                        <button type="submit" class="btn btn-success">✅ Одобрить и выдать роль</button>
                     </form>
-                </dialog>
-                {% endif %}
-            </article>
-            {% endfor %}
+                    <button type="button" class="btn btn-danger" onclick="document.getElementById('reject-modal').showModal()">❌ Отклонить</button>
+                </div>
+            </div>
+
+            <dialog id="reject-modal" class="modal">
+                <form method="post" action="/promotion/{{ promotion.id }}/action">
+                    <input type="hidden" name="action" value="reject">
+                    <h3>Причина отклонения</h3>
+                    <div class="reason-list">
+                        {% for reason in config.promotion_rejection_reasons %}
+                        <label class="reason-option">
+                            <input type="radio" name="rejection_reason_id" value="{{ reason.id }}" required
+                                   {% if reason.id == 'other' %}onchange="document.getElementById('custom-reason').style.display='block'"{% else %}onchange="document.getElementById('custom-reason').style.display='none'"{% endif %}>
+                            {{ reason.label }}
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <textarea id="custom-reason" name="custom_reason" placeholder="Укажите свою причину..." style="display:none" rows="3"></textarea>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-outline" onclick="document.getElementById('reject-modal').close()">Отмена</button>
+                        <button type="submit" class="btn btn-danger">Отклонить</button>
+                    </div>
+                </form>
+            </dialog>
+            {% endif %}
+
+            {% if logs %}
+            <div class="logs-section">
+                <h3>История действий</h3>
+                <table class="logs-table">
+                    <thead>
+                        <tr><th>Дата</th><th>Действие</th><th>Кто</th><th>Детали</th><th>Источник</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td>{{ log.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                            <td>{{ action_labels.get(log.action, log.action) }}</td>
+                            <td>{{ log.actor_name }} <span class="muted">({{ log.actor_id or '—' }})</span></td>
+                            <td>{{ log.details or '—' }}</td>
+                            <td>{{ source_labels.get(log.source, log.source) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
         </div>
-        {% else %}
-        <div class="empty-state"><p>Запросов на повышение не найдено</p></div>
-        {% endif %}
     </main>
 </body>
 </html>
