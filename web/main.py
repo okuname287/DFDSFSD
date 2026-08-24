@@ -743,6 +743,7 @@ async def logs_page(request: Request, server: str = "all", category: str = "appl
                 game_server=selected_server,
                 actor_discord_user_id=discord_user_id,
                 log_type="application" if category == "applications" else "promotion" if category == "promotions" else None,
+                limit=250,
             )
         ]
     else:
@@ -752,6 +753,7 @@ async def logs_page(request: Request, server: str = "all", category: str = "appl
             for log in get_logs(
                 game_server=selected_server,
                 log_type="application" if category == "applications" else "promotion" if category == "promotions" else None,
+                limit=250,
             )
         ]
     stats = {
