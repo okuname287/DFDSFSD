@@ -244,16 +244,52 @@ def consume_notifications(request: Request) -> list[dict[str, str]]:
 BASE_DIR = Path(__file__).resolve().parent
 app.add_middleware(SessionMiddleware, secret_key=config["web"]["secret_key"])
 
-# Initialize Jinja2 templates, but provide a safe fallback for missing templates
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
-try:
-    from jinja2 import ChoiceLoader, DictLoader
+# Initialize Jinja2 templates, but attempt to locate the real templates dir across
+# several likely runtime locations (works both on local machine and inside containers).
+import logging
+logger = logging.getLogger(__name__)
+from jinja2 import ChoiceLoader, DictLoader
 
-    templates_dir = BASE_DIR / "templates"
-    # If the critical roster.html template is missing (e.g. not packaged into the image),
-    # add a minimal fallback so the app doesn't crash with TemplateNotFound.
-    if not (templates_dir / "roster.html").exists():
-        fallback_roster = """<!DOCTYPE html>
+# Candidate template directories to probe at runtime (in order of preference).
+# BASE_DIR is the source-code location; but in containers the code may be located at /app.
+candidate_dirs = [
+    BASE_DIR / "templates",
+    Path.cwd() / "web" / "templates",
+    Path("/app/web/templates"),
+    Path("/usr/src/app/web/templates"),
+]
+chosen_templates_dir: Path | None = None
+for d in candidate_dirs:
+    try:
+        if d.exists() and d.is_dir():
+            # Check for roster.html specifically to ensure template set is present
+            if (d / "roster.html").exists():
+                chosen_templates_dir = d
+                break
+    except Exception:
+        # ignore permission errors and continue
+        continue
+
+if chosen_templates_dir is None:
+    # fallback to BASE_DIR/templates if it exists at least as a directory (may be missing roster)
+    if (BASE_DIR / "templates").exists():
+        chosen_templates_dir = BASE_DIR / "templates"
+
+if chosen_templates_dir:
+    templates = Jinja2Templates(directory=str(chosen_templates_dir))
+    logger.info("Using templates directory: %s", chosen_templates_dir)
+else:
+    # No templates directory found in usual places. Create a Jinja env with a fallback loader
+    # that provides a minimal roster.html so the app doesn't crash. Log prominently.
+    logger.warning(
+        "No templates directory found among candidates %s — using embedded fallback template."
+        " This usually means templates were not copied into the runtime image.",
+        candidate_dirs,
+    )
+    # Start with a Jinja2Templates pointing at BASE_DIR/templates (may not exist) to preserve API
+    templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+
+    fallback_roster = """<!DOCTYPE html>
 <html lang=\"ru\"> 
 <head>
   <meta charset=\"utf-8\"> 
@@ -275,10 +311,7 @@ try:
   {% endif %}
 </body>
 </html>"""
-        templates.env.loader = ChoiceLoader([templates.env.loader, DictLoader({"roster.html": fallback_roster})])
-except Exception:
-    # If Jinja2 internals aren't available for some reason, continue without the fallback.
-    pass
+    templates.env.loader = ChoiceLoader([templates.env.loader, DictLoader({"roster.html": fallback_roster})])
 
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
