@@ -185,12 +185,12 @@ code { background: var(--surface); padding: 0.15rem 0.5rem; border-radius: 4px; 
     height: 18px;
 }
 .server-logo-header {
-    width: 42px;
-    height: 42px;
+    width: 26px;
+    height: 26px;
 }
 .server-logo-large {
-    width: 64px;
-    height: 64px;
+    width: 56px;
+    height: 56px;
     margin: 0 auto 0.9rem;
 }
 .nav-links a { display: inline-flex; align-items: center; }
@@ -274,6 +274,46 @@ code { background: var(--surface); padding: 0.15rem 0.5rem; border-radius: 4px; 
 .status-callback { background: #5865f233; color: var(--primary); }
 
 .empty-state { text-align: center; padding: 3rem; color: var(--text-muted); }
+
+.bot-errors-list { display: grid; gap: 0.85rem; margin-top: 1rem; }
+.bot-error-card {
+    background: linear-gradient(145deg, rgba(25, 36, 53, 0.92), rgba(17, 25, 38, 0.92));
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.1rem;
+    color: var(--text);
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.2s, background 0.2s;
+}
+.bot-error-card:hover, .bot-error-card:focus-visible { border-color: rgba(109,124,255,0.7); background: var(--surface-hover); transform: translateY(-1px); }
+.bot-error-card-top { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.5rem; }
+.bot-error-time { color: var(--text-muted); font-size: 0.78rem; }
+.bot-error-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: rgba(255, 111, 120, 0.12);
+    border: 1px solid rgba(255, 111, 120, 0.25);
+    color: var(--danger);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.bot-error-message { font-weight: 600; margin-bottom: 0.35rem; }
+.bot-error-card small { color: var(--text-muted); }
+.bot-error-details {
+    white-space: pre-wrap;
+    background: rgba(6, 10, 16, 0.8);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.8rem;
+    overflow-x: auto;
+    margin-top: 0.8rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.78rem;
+}
 
 .detail-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; }
 .detail-header h1 { font-size: clamp(1.55rem, 4vw, 2.15rem); line-height: 1.2; }
