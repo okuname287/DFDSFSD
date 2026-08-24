@@ -87,14 +87,23 @@
         {% if bot_errors %}
         <div class="bot-errors-list">
             {% for error in bot_errors %}
-            <article class="bot-error-card" tabindex="0" data-event-name="{{ error.event_name | e }}" data-message="{{ error.message | e }}" data-user="{{ error.discord_user_id or 'Система' | e }}" data-details="{{ error.technical_details or '—' | e }}">
+            <button
+                type="button"
+                class="bot-error-card"
+                tabindex="0"
+                data-event-name="{{ error.event_name | e }}"
+                data-message="{{ error.message | e }}"
+                data-user="{{ error.discord_user_id or 'Система' | e }}"
+                data-details="{{ error.technical_details or '—' | e }}"
+                aria-label="Открыть детали ошибки {{ error.event_name }}"
+            >
                 <div class="bot-error-card-top">
                     <span class="bot-error-time">{{ error.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
                     <span class="bot-error-tag">{{ error.event_name }}</span>
                 </div>
                 <p class="bot-error-message">{{ error.message }}</p>
                 <small>Пользователь: {{ error.discord_user_id or 'Система' }}</small>
-            </article>
+            </button>
             {% endfor %}
         </div>
         <dialog id="bot-error-modal" class="modal">
