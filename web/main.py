@@ -9,7 +9,7 @@ from urllib.parse import urlencode
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -101,6 +101,17 @@ app.add_middleware(SessionMiddleware, secret_key=config["web"]["secret_key"])
 
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+
+
+@app.get("/memphis.png", include_in_schema=False)
+async def memphis_logo():
+    return FileResponse(BASE_DIR.parent / "memphis.png", media_type="image/png")
+
+
+@app.get("/phoenix.png", include_in_schema=False)
+async def phoenix_logo():
+    return FileResponse(BASE_DIR.parent / "phoenix.png", media_type="image/png")
+
 
 @app.middleware("http")
 async def static_cache_middleware(request, call_next):
