@@ -168,7 +168,7 @@
                     </td>
                     <td>{{ log.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
                     <td>{{ action_labels.get(log.action, log.action) }}</td>
-                    <td>{{ log.target_discord_user_id or '—' }}</td>
+                    <td>{{ log.actor_id or '—' }}</td>
                     <td>{{ log.actor_name or '—' }}</td>
                     <td>{{ log.details or '—' }}</td>
                     <td>{{ source_labels.get(log.source, log.source) }}</td>
