@@ -46,9 +46,27 @@ class LondoBot(commands.Bot):
         # Персистентная кнопка «Подать заявку» на всех welcome-сообщениях
         self.add_view(WelcomeApplyButton())
         self.add_view(PromotionApplyButton())
-        guild = discord.Object(id=config["discord"]["guild_id"])
+
+        guild_id = config["discord"].get("guild_id") or 0
+        if not guild_id:
+            print("⚠️ DISCORD_GUILD_ID не задан — пропускаю синхронизацию slash-команд.")
+            return
+
+        guild = discord.Object(id=guild_id)
         self.tree.copy_global_to(guild=guild)
-        await self.tree.sync(guild=guild)
+        try:
+            await self.tree.sync(guild=guild)
+        except discord.Forbidden as exc:
+            print(
+                "⚠️ Не удалось синхронизировать slash-команды в guild "
+                f"{guild_id}: {exc}"
+            )
+            print(
+                "Проверьте, что бот добавлен на сервер и приглашён с правами "
+                "'applications.commands' / 'Use Application Commands'."
+            )
+        except discord.HTTPException as exc:
+            print(f"⚠️ Ошибка синхронизации slash-команд для guild {guild_id}: {exc}")
 
     async def on_ready(self):
         print(f"Bot logged in as {self.user} (ID: {self.user.id})")
