@@ -221,6 +221,7 @@ code { background: var(--surface); padding: 0.15rem 0.5rem; border-radius: 4px; 
     color: var(--text);
     box-shadow: 0 5px 16px rgba(0, 0, 0, 0.1);
     transition: background 0.2s, border-color 0.2s, transform 0.2s;
+    cursor: pointer;
 }
 .application-card:hover { background: var(--surface-hover); border-color: #44536a; transform: translateY(-2px); text-decoration: none; }
 .app-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
