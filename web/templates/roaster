@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ config.servers[server].name }} — Состав семьи</title>
+    <link rel="stylesheet" href="/static/css/style.css?v=2026-ui">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand"><a href="/">Londo Family</a></div>
+        <div class="nav-links">
+            {% for available_server in visible_servers %}
+            <a href="/server/{{ available_server }}" class="{% if available_server == server %}active{% endif %}"><span class="server-name-row"><img class="server-logo server-logo-small" src="/{{ available_server }}.png" alt="{{ config.servers[available_server].name }} logo">{{ config.servers[available_server].name }}</span></a>
+            {% endfor %}
+            <a href="/roster/{{ server }}" class="tab active">Состав семьи</a>
+            {% if can_view_logs %}<a href="/logs?server={{ server }}&category=applications">Логи</a>{% endif %}
+            {% if is_access_admin %}<a href="/settings/access">Настройки</a>{% endif %}
+            <span class="user-badge">{{ user.username }}</span>
+            {% if is_access_admin %}<a href="/settings/access" class="settings-gear" title="Настройки доступа" aria-label="Настройки доступа">⚙</a>{% endif %}
+            <a href="/auth/logout" class="btn btn-outline">Выйти</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        <header class="workspace-heading {{ server }}">
+            <div>
+                <p class="eyebrow">Londo Family / Состав</p>
+                <h1><span class="server-name-row"><img class="server-logo server-logo-header" src="/{{ server }}.png" alt="{{ config.servers[server].name }} logo">{{ config.servers[server].name }}</span></h1>
+                <p class="subtitle">Полный состав семьи по ролям выданным в Discord.</p>
+            </div>
+        </header>
+
+        <div class="filter-tabs">
+            <a href="/server/{{ server }}" class="tab">Обзор сервера</a>
+            <a href="/cabinet/{{ server }}?status=pending" class="tab">Заявки</a>
+            <a href="/promotions?server={{ server }}&status=pending" class="tab">Повышения</a>
+            <a href="/roster/{{ server }}" class="tab active">Состав семьи</a>
+        </div>
+
+        {% if not roster %}
+        <div class="empty-state"><p>Не удалось загрузить состав семьи. Проверьте токен Discord бота и роль сервера.</p></div>
+        {% else %}
+            {% for group in roster %}
+            <section class="roster-group">
+                <h2>{{ group.label }}</h2>
+                {% if group.members %}
+                <table class="roster-table">
+                    <thead>
+                        <tr>
+                            <th>Discord ID</th>
+                            <th>Имя</th>
+                            <th>Роли</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for member in group.members %}
+                        <tr>
+                            <td>{{ member.discord_id }}</td>
+                            <td>
+                                <div class="roster-name-block">
+                                    <strong>{{ member.display_name }}</strong>
+                                    <small>@{{ member.username }}</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="roster-role-list">
+                                    {% for role_name in member.roles %}
+                                    <span class="roster-role-badge">{{ role_name }}</span>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="muted">Нет участников.</p>
+                {% endif %}
+            </section>
+            {% endfor %}
+        {% endif %}
+    </main>
+</body>
+</html>
