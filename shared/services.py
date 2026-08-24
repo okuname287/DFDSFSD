@@ -177,10 +177,11 @@ def update_callback_voice_state(
 
 def get_logs(
     application_id: int | None = None,
+    promotion_request_id: int | None = None,
     game_server: str | None = None,
     discord_user_id: str | None = None,
 ) -> list[ActionLog]:
-    """Return action logs. Can filter by application_id, game_server, or target discord_user_id.
+    """Return action logs. Can filter by application_id, promotion_request_id, game_server, or target discord_user_id.
 
     Static ID is no longer used for searching — searches are performed only by Discord ID.
     """
@@ -189,6 +190,8 @@ def get_logs(
         query = session.query(ActionLog)
         if application_id:
             query = query.filter(ActionLog.application_id == application_id)
+        if promotion_request_id:
+            query = query.filter(ActionLog.promotion_request_id == promotion_request_id)
         if game_server:
             query = query.filter(ActionLog.game_server == game_server)
         if discord_user_id:
