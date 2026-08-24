@@ -10,8 +10,8 @@
     <nav class="navbar">
         <div class="nav-brand"><a href="/">Londo Family</a></div>
         <div class="nav-links">
-            {% if 'memphis' in visible_servers %}<a href="/server/memphis">Memphis</a>{% endif %}
-            {% if 'phoenix' in visible_servers %}<a href="/server/phoenix">Phoenix</a>{% endif %}
+            {% if 'memphis' in visible_servers %}<a href="/server/memphis"><span class="server-name-row"><img class="server-logo server-logo-small" src="/memphis.png" alt="Memphis logo">Memphis</span></a>{% endif %}
+            {% if 'phoenix' in visible_servers %}<a href="/server/phoenix"><span class="server-name-row"><img class="server-logo server-logo-small" src="/phoenix.png" alt="Phoenix logo">Phoenix</span></a>{% endif %}
             <a href="/promotions" class="active">Повышения</a>
             {% if can_view_logs %}
             <a href="/logs">Логи</a>
@@ -27,7 +27,7 @@
         {% endfor %}
         <header class="cabinet-header promotions-header {% if server != 'all' %}{{ server }}{% endif %}">
             {% if server != 'all' %}
-            <span class="cabinet-emoji">{{ config.servers[server].emoji }}</span>
+            <img class="server-logo server-logo-header" src="/{{ server }}.png" alt="{{ config.servers[server].name }} logo">
             {% endif %}
             <h1>Запросы на повышение{% if server != 'all' %} {{ config.servers[server].name }}{% endif %}</h1>
         </header>
