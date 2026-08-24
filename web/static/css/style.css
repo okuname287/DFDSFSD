@@ -181,16 +181,21 @@ code { background: var(--surface); padding: 0.15rem 0.5rem; border-radius: 4px; 
     image-rendering: auto;
 }
 .server-logo-small {
-    width: 18px;
-    height: 18px;
+    width: 32px;
+    height: 32px;
 }
 .server-logo-header {
-    width: 26px;
-    height: 26px;
+    width: 32px;
+    height: 32px;
 }
 .server-logo-large {
     width: 56px;
     height: 56px;
+    margin: 0 auto 0.9rem;
+}
+.cabinets-grid .server-logo-large {
+    width: 72px;
+    height: 72px;
     margin: 0 auto 0.9rem;
 }
 .nav-links a { display: inline-flex; align-items: center; }
