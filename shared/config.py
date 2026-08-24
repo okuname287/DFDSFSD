@@ -91,7 +91,10 @@ def _build_config_from_env() -> dict[str, Any]:
             "promotion_request_channel_id": _env_int("DISCORD_PROMOTION_REQUEST_CHANNEL_ID", 0),
             "notification_channels": {server: _env_int(f"DISCORD_NOTIFICATION_CHANNEL_{server.upper()}", 0) for server in servers},
             "promotion_roles": {
-                server: {target: _env_int(f"DISCORD_PROMOTION_ROLE_{server.upper()}_{target.upper()}", 0) for target in promotion_targets}
+                server: {
+                    **{target: _env_int(f"DISCORD_PROMOTION_ROLE_{server.upper()}_{target.upper()}", 0) for target in promotion_targets},
+                    **({"newbie_londo": _env_int(f"DISCORD_PROMOTION_ROLE_{server.upper()}_NEWBIE_LONDO", 0)} if _env_int(f"DISCORD_PROMOTION_ROLE_{server.upper()}_NEWBIE_LONDO", 0) else {}),
+                }
                 for server in servers
             },
             "application_command": _env("DISCORD_APPLICATION_COMMAND", "заявка"),
