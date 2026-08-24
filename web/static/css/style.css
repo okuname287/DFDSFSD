@@ -280,15 +280,27 @@ code { background: var(--surface); padding: 0.15rem 0.5rem; border-radius: 4px; 
 
 .bot-errors-list { display: grid; gap: 0.85rem; margin-top: 1rem; }
 .bot-error-card {
+    display: block;
+    width: 100%;
+    text-align: left;
     background: linear-gradient(145deg, rgba(25, 36, 53, 0.92), rgba(17, 25, 38, 0.92));
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 1rem 1.1rem;
     color: var(--text);
     cursor: pointer;
-    transition: border-color 0.2s, transform 0.2s, background 0.2s;
+    transition: border-color 0.2s, transform 0.2s, background 0.2s, box-shadow 0.2s;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    appearance: none;
+    -webkit-appearance: none;
 }
-.bot-error-card:hover, .bot-error-card:focus-visible { border-color: rgba(109,124,255,0.7); background: var(--surface-hover); transform: translateY(-1px); }
+.bot-error-card:hover, .bot-error-card:focus-visible {
+    border-color: rgba(109,124,255,0.7);
+    background: linear-gradient(145deg, rgba(39, 57, 83, 0.98), rgba(20, 30, 45, 0.98));
+    transform: translateY(-2px);
+    box-shadow: 0 16px 28px rgba(88, 101, 242, 0.18);
+    outline: none;
+}
 .bot-error-card-top { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.5rem; }
 .bot-error-time { color: var(--text-muted); font-size: 0.78rem; }
 .bot-error-tag {
