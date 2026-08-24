@@ -11,7 +11,7 @@
         <div class="nav-brand"><a href="/">Londo Family</a></div>
         <div class="nav-links">
             {% for available_server in visible_servers %}
-            <a href="/server/{{ available_server }}" class="{% if available_server == server %}active{% endif %}">{{ config.servers[available_server].name }}</a>
+            <a href="/server/{{ available_server }}" class="{% if available_server == server %}active{% endif %}"><span class="server-name-row"><img class="server-logo server-logo-small" src="/{{ available_server }}.png" alt="{{ config.servers[available_server].name }} logo">{{ config.servers[available_server].name }}</span></a>
             {% endfor %}
             {% if can_view_logs %}<a href="/logs?server={{ server }}&category=applications">Логи</a>{% endif %}
             {% if is_access_admin %}<a href="/settings/access">Настройки</a>{% endif %}
@@ -25,7 +25,7 @@
         <header class="workspace-heading {{ server }}">
             <div>
                 <p class="eyebrow">Londo Family / Сервер</p>
-                <h1>{{ config.servers[server].emoji }} {{ config.servers[server].name }}</h1>
+                <h1><span class="server-name-row"><img class="server-logo server-logo-header" src="/{{ server }}.png" alt="{{ config.servers[server].name }} logo">{{ config.servers[server].name }}</span></h1>
                 <p class="subtitle">Все рабочие разделы сервера собраны в одном месте.</p>
             </div>
         </header>
