@@ -65,7 +65,7 @@
 
         <div class="filter-tabs logs-category-tabs">
             {% for category_id, category_name in categories.items() %}
-            <a href="/logs?server={{ selected_server }}&category={{ category_id }}" class="tab active">{{ category_name }}</a>
+            <a href="/logs?server={{ selected_server }}&category={{ category_id }}" class="tab {% if selected_category == category_id %}active{% endif %}">{{ category_name }}</a>
             {% endfor %}
             {% if can_view_bot_errors %}
             <a href="/logs?server={{ selected_server }}&category=bot_errors" class="tab {% if selected_category == 'bot_errors' %}active{% endif %}">Ошибки бота</a>
