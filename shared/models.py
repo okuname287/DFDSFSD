@@ -293,7 +293,7 @@ def _migrate_schema():
             conn.exec_driver_sql(
                 "ALTER TABLE action_logs ADD COLUMN IF NOT EXISTS target_static_id VARCHAR(64);"
             )
-            # Create indexes to support search
+            # Create indexes to support search and the logs page
             conn.exec_driver_sql(
                 "CREATE INDEX IF NOT EXISTS ix_action_logs_target_discord_user_id ON action_logs (target_discord_user_id);"
             )
@@ -302,6 +302,28 @@ def _migrate_schema():
             )
             conn.exec_driver_sql(
                 "CREATE INDEX IF NOT EXISTS ix_action_logs_game_server ON action_logs (game_server);"
+            )
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_action_logs_log_type_game_server_created_at ON action_logs (log_type, game_server, created_at DESC);"
+            )
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_action_logs_actor_id_action_created_at ON action_logs (actor_id, action, created_at DESC);"
+            )
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_action_logs_promotion_request_id ON action_logs (promotion_request_id);"
+            )
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_action_logs_application_id ON action_logs (application_id);"
+            )
+
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_applications_server_status_created_at ON applications (game_server, status, created_at DESC);"
+            )
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_promotion_requests_server_status_created_at ON promotion_requests (game_server, status, created_at DESC);"
+            )
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_login_events_created_at ON login_events (created_at DESC);"
             )
 
         # The following legacy-rewrite and promotion_requests checks are SQLite-specific
