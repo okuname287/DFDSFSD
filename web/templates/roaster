@@ -38,48 +38,13 @@
             <a href="/roster/{{ server }}" class="tab active">Состав семьи</a>
         </div>
 
-        {% if not roster %}
-        <div class="empty-state"><p>Не удалось загрузить состав семьи. Проверьте токен Discord бота и роль сервера.</p></div>
-        {% else %}
-            {% for group in roster %}
-            <section class="roster-group">
-                <h2>{{ group.label }}</h2>
-                {% if group.members %}
-                <table class="roster-table">
-                    <thead>
-                        <tr>
-                            <th>Discord ID</th>
-                            <th>Имя</th>
-                            <th>Роли</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for member in group.members %}
-                        <tr>
-                            <td>{{ member.discord_id }}</td>
-                            <td>
-                                <div class="roster-name-block">
-                                    <strong>{{ member.display_name }}</strong>
-                                    <small>@{{ member.username }}</small>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="roster-role-list">
-                                    {% for role_name in member.roles %}
-                                    <span class="roster-role-badge">{{ role_name }}</span>
-                                    {% endfor %}
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                {% else %}
-                <p class="muted">Нет участников.</p>
-                {% endif %}
-            </section>
-            {% endfor %}
-        {% endif %}
+        <section class="empty-state">
+            <div class="development-placeholder">
+                <p class="eyebrow">Londo Family / Состав</p>
+                <h2>В разработке</h2>
+                <p class="subtitle">Состав семьи скоро появится здесь.</p>
+            </div>
+        </section>
     </main>
 </body>
 </html>
