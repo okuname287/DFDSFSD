@@ -66,10 +66,26 @@ def get_application_by_callback_voice(channel_id: int) -> Application | None:
         session.close()
 
 
+_applications_cache: dict[tuple[str | None, str | None, int], list[Application]] = {}
+_applications_cache_ts: float = 0.0
+
+
 def list_applications(
     game_server: str | None = None,
     status: str | None = None,
 ) -> list[Application]:
+    """Return applications with a short, in-process cache for the cabinet page.
+
+    Cabinet pages and modals are often reloaded repetitively. Keeping a TTL cache
+    removes the repeated SELECT+ORDER BY when different columns are read from the
+    same page view, while remaining safe for the same request burst.
+    """
+    global _applications_cache, _applications_cache_ts
+    now = time.time()
+    cache_key = (game_server, status, 30)
+    if cache_key in _applications_cache and now - _applications_cache_ts < 30:
+        return _applications_cache[cache_key]
+
     session = get_session_factory()()
     try:
         query = session.query(Application)
@@ -77,7 +93,10 @@ def list_applications(
             query = query.filter(Application.game_server == GameServer(game_server))
         if status:
             query = query.filter(Application.status == ApplicationStatus(status))
-        return query.order_by(Application.created_at.desc()).all()
+        rows = query.order_by(Application.created_at.desc()).all()
+        _applications_cache[cache_key] = rows
+        _applications_cache_ts = now
+        return rows
     finally:
         session.close()
 
@@ -186,12 +205,12 @@ def get_logs(
     actor_discord_user_id: str | None = None,
     log_type: str | None = None,
     limit: int | None = 50,
+    offset: int = 0,
 ) -> list[ActionLog]:
-    """Return action logs. Can filter by application_id, promotion_request_id,
-    game_server, target discord_user_id, actor discord_user_id, or log type.
+    """Return action logs with a cheap paging pattern.
 
-    The heavy N+1 promotion-user enrichment is replaced by a single since the
-    promotion request relation can be fetched in bulk before the log list returns.
+    Keeps the same filtering shape but avoids the previous unlimited query.
+    It also replaces the per-log promotion target fill with a bulk enrichment.
     """
     session = get_session_factory()()
     try:
@@ -210,6 +229,8 @@ def get_logs(
             query = query.filter(ActionLog.log_type == log_type)
 
         query = query.order_by(ActionLog.created_at.desc())
+        if offset:
+            query = query.offset(offset)
         if limit is not None:
             query = query.limit(limit)
 
@@ -483,7 +504,17 @@ def create_promotion(data) -> PromotionRequest:
         session.close()
 
 
+_promotions_cache: dict[tuple[str | None, str | None, int], list[PromotionRequest]] = {}
+_promotions_cache_ts: float = 0.0
+
+
 def list_promotions(game_server: str | None = None, status: str | None = None) -> list[PromotionRequest]:
+    global _promotions_cache, _promotions_cache_ts
+    now = time.time()
+    cache_key = (game_server, status, 30)
+    if cache_key in _promotions_cache and now - _promotions_cache_ts < 30:
+        return _promotions_cache[cache_key]
+
     session = get_session_factory()()
     try:
         query = session.query(PromotionRequest)
@@ -491,7 +522,10 @@ def list_promotions(game_server: str | None = None, status: str | None = None) -
             query = query.filter(PromotionRequest.game_server == GameServer(game_server))
         if status:
             query = query.filter(PromotionRequest.status == PromotionStatus(status))
-        return query.order_by(PromotionRequest.created_at.desc()).all()
+        rows = query.order_by(PromotionRequest.created_at.desc()).all()
+        _promotions_cache[cache_key] = rows
+        _promotions_cache_ts = now
+        return rows
     finally:
         session.close()
 
