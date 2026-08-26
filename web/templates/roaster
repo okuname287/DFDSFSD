@@ -38,9 +38,9 @@
             <a href="/roster/{{ server }}" class="tab active">Состав семьи</a>
         </div>
 
-        <section class="empty-state">
+        <section class="empty-state development-card">
             <div class="development-placeholder">
-                <p class="eyebrow">Londo Family / Состав</p>
+                <span class="development-icon">✦</span>
                 <h2>В разработке</h2>
                 <p class="subtitle">Состав семьи скоро появится здесь.</p>
             </div>
