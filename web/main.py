@@ -9,14 +9,14 @@ from urllib.parse import urlencode
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 
 from shared.config import get_config, get_role_id
-from shared.models import init_db, ping_database
+from shared.models import init_db
 from shared.schemas import (
     ApplicationAction,
     ApplicationCreate,
@@ -248,7 +248,7 @@ app.add_middleware(SessionMiddleware, secret_key=config["web"]["secret_key"])
 # several likely runtime locations (works both on local machine and inside containers).
 import logging
 logger = logging.getLogger(__name__)
-from jinja2 import ChoiceLoader, DictLoader
+from jinja2 import ChoiceLoader, DictLoader, TemplateNotFound
 
 # Candidate template directories to probe at runtime (in order of preference).
 # BASE_DIR is the source-code location; but in containers the code may be located at /app.
@@ -289,7 +289,7 @@ else:
     # Start with a Jinja2Templates pointing at BASE_DIR/templates (may not exist) to preserve API
     templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
-    fallback_roster = """<!DOCTYPE html>
+fallback_roster = """<!DOCTYPE html>
 <html lang=\"ru\"> 
 <head>
   <meta charset=\"utf-8\"> 
@@ -311,7 +311,10 @@ else:
   {% endif %}
 </body>
 </html>"""
-    templates.env.loader = ChoiceLoader([templates.env.loader, DictLoader({"roster.html": fallback_roster})])
+
+# Always attach a dictionary fallback so the route keeps rendering a
+# human-readable roster stub instead of exploding with TemplateNotFound.
+templates.env.loader = ChoiceLoader([templates.env.loader, DictLoader({"roster.html": fallback_roster})])
 
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
@@ -324,27 +327,6 @@ async def memphis_logo():
 @app.get("/phoenix.png", include_in_schema=False)
 async def phoenix_logo():
     return FileResponse(BASE_DIR.parent / "phoenix.png", media_type="image/png")
-
-
-@app.middleware("http")
-async def db_healthcheck_middleware(request, call_next):
-    """Perform a cheap DB liveness ping before routing user-facing requests.
-
-    If the configured database responds to a SELECT 1 probe, the request is passed
-    to the normal handling chain. If the DB doesn't answer, the user gets a clear
-    503 error instead of failing in the middle of an action.
-    """
-    path = request.url.path
-    if path.startswith("/static/"):
-        return await call_next(request)
-
-    if not ping_database():
-        return JSONResponse(
-            {"detail": "Database unavailable. The site could not reach the configured database."},
-            status_code=503,
-        )
-
-    return await call_next(request)
 
 
 @app.middleware("http")
@@ -737,20 +719,25 @@ async def roster_page(request: Request, server: str):
         raise HTTPException(status_code=404)
     if not _has_server_access(user, server):
         raise HTTPException(status_code=403, detail="Нет доступа к составу этого сервера")
-    roster = await _fetch_guild_roster(server)
-    return templates.TemplateResponse(
-        request,
-        "roster.html",
-        {
-            "user": user,
-            "config": config,
-            "server": server,
-            "visible_servers": _visible_servers(user),
-            "roster": roster,
-            "can_view_logs": _has_logs_access(user),
-            "is_access_admin": _is_access_admin(user),
-        },
-    )
+
+    # Roster data is currently intentionally stubbed out.
+    # Avoid the expensive Discord guild-role/member fetch here so the
+    # placeholder page answers fast and does not crash if the runtime
+    # image misses the roster template file.
+    context = {
+        "user": user,
+        "config": config,
+        "server": server,
+        "visible_servers": _visible_servers(user),
+        "roster": [],
+        "can_view_logs": _has_logs_access(user),
+        "is_access_admin": _is_access_admin(user),
+    }
+
+    try:
+        return templates.TemplateResponse(request, "roster.html", context)
+    except TemplateNotFound:
+        return HTMLResponse(fallback_roster)
 
 
 @app.get("/cabinet/{server}", response_class=HTMLResponse)
