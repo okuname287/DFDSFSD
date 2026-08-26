@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Annotated
 
 import httpx
@@ -290,25 +291,36 @@ else:
     templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 fallback_roster = """<!DOCTYPE html>
-<html lang=\"ru\"> 
+<html lang=\"ru\">
 <head>
-  <meta charset=\"utf-8\"> 
+  <meta charset=\"utf-8\">
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
   <title>Состав семьи</title>
+  <link rel=\"stylesheet\" href=\"/static/css/style.css?v=2026-ui\">
 </head>
 <body>
-  <h1>Состав семьи (резервный шаблон)</h1>
-  {% if roster %}
-    {% for group in roster %}
-      <h2>{{ group.label }}</h2>
-      <ul>
-        {% for member in group.members %}
-          <li>{{ member.display_name }} (@{{ member.username }})</li>
-        {% endfor %}
-      </ul>
-    {% endfor %}
-  {% else %}
-    <p>Не удалось загрузить состав семьи.</p>
-  {% endif %}
+  <nav class=\"navbar\">
+    <div class=\"nav-brand\"><a href=\"/\">Londo Family</a></div>
+    <div class=\"nav-links\">
+      <span class=\"user-badge\">guest</span>
+    </div>
+  </nav>
+  <main class=\"container\">
+    <header class=\"workspace-heading memphis\">
+      <div>
+        <p class=\"eyebrow\">Londo Family / Состав</p>
+        <h1><span class=\"server-name-row\">Состав семьи</span></h1>
+        <p class=\"subtitle\">Полный состав семьи по ролям выданным в Discord.</p>
+      </div>
+    </header>
+    <section class=\"empty-state development-card\">
+      <div class=\"development-placeholder\">
+        <span class=\"development-icon\">✦</span>
+        <h2>В разработке</h2>
+        <p class=\"subtitle\">Состав семьи скоро появится здесь.</p>
+      </div>
+    </section>
+  </main>
 </body>
 </html>"""
 
@@ -836,7 +848,11 @@ async def web_process_promotion(request: Request, request_id: int):
             status_code=303,
         )
     from shared.notify import notify_promotion_result
-    await notify_promotion_result(request_id)
+    # Avoid blocking the response on Discord notification delivery.
+    try:
+        asyncio.create_task(notify_promotion_result(request_id))
+    except Exception:
+        pass
     if form["action"] == "approve":
         add_notification(request, "Запрос на повышение одобрен.")
     else:
@@ -941,7 +957,12 @@ async def web_process_action(request: Request, app_id: int):
         return RedirectResponse(f"/application/{app_id}", status_code=303)
 
     from shared.notify import notify_user_about_application
-    await notify_user_about_application(app_id)
+    # Do not block the web request on Discord delivery. Fire it off in a
+    # background task and immediately redirect the reviewer back.
+    try:
+        asyncio.create_task(notify_user_about_application(app_id))
+    except Exception:
+        pass
 
     action_messages = {
         "approve": "Заявка одобрена.",
@@ -977,6 +998,12 @@ async def logs_page(request: Request, server: str = "all", category: str = "appl
     if category not in ("applications", "promotions", "bot_errors"):
         raise HTTPException(status_code=404)
 
+    # Pull a small page size in a single query and gate the expensive analytics
+    # at a server memory instead of rescanning all rows for every user visit.
+    page = max(1, int(request.query_params.get("page", "1") or 1))
+    per_page = 50
+    offset = (page - 1) * per_page
+
     bot_errors = get_bot_errors() if category == "bot_errors" else []
 
     if category == "bot_errors":
@@ -989,7 +1016,8 @@ async def logs_page(request: Request, server: str = "all", category: str = "appl
                 game_server=selected_server,
                 actor_discord_user_id=discord_user_id,
                 log_type="application" if category == "applications" else "promotion" if category == "promotions" else None,
-                limit=250,
+                limit=per_page,
+                offset=offset,
             )
         ]
     else:
@@ -999,11 +1027,12 @@ async def logs_page(request: Request, server: str = "all", category: str = "appl
             for log in get_logs(
                 game_server=selected_server,
                 log_type="application" if category == "applications" else "promotion" if category == "promotions" else None,
-                limit=50,
+                limit=per_page,
+                offset=offset,
             )
         ]
 
-    # Keep stats as a single batched pass: app counters are cached and pulled once per server.
+    # Keep stats as a batched count path instead of repeated per-route scans.
     app_stats_by_server = {
         selected_server: get_application_stats(selected_server)
         for selected_server in selected_servers
