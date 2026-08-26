@@ -999,17 +999,23 @@ async def logs_page(request: Request, server: str = "all", category: str = "appl
             for log in get_logs(
                 game_server=selected_server,
                 log_type="application" if category == "applications" else "promotion" if category == "promotions" else None,
-                limit=250,
+                limit=50,
             )
         ]
+
+    # Keep stats as a single batched pass: app counters are cached and pulled once per server.
+    app_stats_by_server = {
+        selected_server: get_application_stats(selected_server)
+        for selected_server in selected_servers
+    }
     stats = {
         "logins": sum(
             get_login_count(config["discord"].get("server_access_roles", {}).get(selected_server, []))
             for selected_server in selected_servers
         ),
-        "applications": sum(get_application_stats(selected_server)["total"] for selected_server in selected_servers),
-        "approved": sum(get_application_stats(selected_server)["approved"] for selected_server in selected_servers),
-        "rejected": sum(get_application_stats(selected_server)["rejected"] for selected_server in selected_servers),
+        "applications": sum(app_stats_by_server[selected_server]["total"] for selected_server in selected_servers),
+        "approved": sum(app_stats_by_server[selected_server]["approved"] for selected_server in selected_servers),
+        "rejected": sum(app_stats_by_server[selected_server]["rejected"] for selected_server in selected_servers),
     }
     callback_logs = [log for log in all_logs if log.action == "callback"]
     recruiter_stats = get_recruiter_stats(selected_servers)
