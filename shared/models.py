@@ -3,7 +3,7 @@ from __future__ import annotations
 import enum
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Enum, Integer, String, Text, create_engine
+from sqlalchemy import Boolean, DateTime, Enum, Integer, String, Text, create_engine, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 from shared.config import get_config
@@ -184,6 +184,21 @@ def get_session_factory():
     if _SessionLocal is None:
         _SessionLocal = sessionmaker(bind=get_engine())
     return _SessionLocal
+
+
+def ping_database() -> bool:
+    """Check whether the configured SQLAlchemy engine can answer a lightweight DB probe.
+
+    This is a cheap one-shot liveness probe for the middleware layer. If the DB is
+    reachable, the request is allowed to continue; on failure we short-circuit with an error.
+    """
+    try:
+        engine = get_engine()
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return True
+    except Exception:
+        return False
 
 
 def init_db():
