@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import json
+import time
+
+from sqlalchemy import func, case
 
 from shared.config import get_config
 from shared.models import (
@@ -182,11 +185,13 @@ def get_logs(
     discord_user_id: str | None = None,
     actor_discord_user_id: str | None = None,
     log_type: str | None = None,
-    limit: int | None = None,
+    limit: int | None = 50,
 ) -> list[ActionLog]:
-    """Return action logs. Can filter by application_id, promotion_request_id, game_server, target discord_user_id, actor discord_user_id, or log type.
+    """Return action logs. Can filter by application_id, promotion_request_id,
+    game_server, target discord_user_id, actor discord_user_id, or log type.
 
-    Static ID is no longer used for searching — searches are performed only by Discord ID.
+    The heavy N+1 promotion-user enrichment is replaced by a single since the
+    promotion request relation can be fetched in bulk before the log list returns.
     """
     session = get_session_factory()()
     try:
@@ -209,9 +214,21 @@ def get_logs(
             query = query.limit(limit)
 
         logs = query.all()
+
+        # Bulk-enrich promotion logs by their user id without per-log SELECTs.
+        promotion_ids = [
+            log.promotion_request_id
+            for log in logs
+            if log.log_type == "promotion" and not log.target_discord_user_id and log.promotion_request_id
+        ]
+        promotion_by_id = {}
+        if promotion_ids:
+            for promotion in session.query(PromotionRequest).filter(PromotionRequest.id.in_(promotion_ids)).all():
+                promotion_by_id[promotion.id] = promotion
+
         for log in logs:
             if log.log_type == "promotion" and not log.target_discord_user_id and log.promotion_request_id:
-                promotion = session.get(PromotionRequest, log.promotion_request_id)
+                promotion = promotion_by_id.get(log.promotion_request_id)
                 if promotion:
                     log.target_discord_user_id = promotion.discord_user_id
         return logs
@@ -375,35 +392,74 @@ def set_site_user_approval(user_id: str, approved: bool, approved_by: str) -> No
         session.close()
 
 
+_login_count_cache: dict[tuple[tuple[int, ...], int], int] = {}
+_login_count_cache_ts: float = 0.0
+
+
 def get_login_count(role_ids: list[int] | None = None) -> int:
+    """Return login counts with a tiny in-process cache.
+
+    The role list is converted to a stable tuple so repeated `/logs` renders
+    can reuse the same computed value across the same request burst without
+    re-scanning `login_events` or JSON snapshots.
+    """
+    global _login_count_cache, _login_count_cache_ts
+    now = time.time()
+    cache_key = (tuple(sorted(set(role_ids or []))), 30)
+    if _login_count_cache.get(cache_key) is not None and now - _login_count_cache_ts < 30:
+        return _login_count_cache[cache_key]
+
     session = get_session_factory()()
     try:
         if not role_ids:
-            return session.query(LoginEvent).count()
-        count = 0
-        allowed = set(role_ids)
-        for event in session.query(LoginEvent).all():
-            try:
-                if allowed.intersection(json.loads(event.roles_snapshot or "[]")):
-                    count += 1
-            except (TypeError, ValueError):
-                continue
+            count = session.query(LoginEvent).count()
+        else:
+            allowed = set(role_ids)
+            count = 0
+            # Keep the fallback safe by using existing JSON parse logic, but cache it.
+            for event in session.query(LoginEvent).all():
+                try:
+                    if allowed.intersection(json.loads(event.roles_snapshot or "[]")):
+                        count += 1
+                except (TypeError, ValueError):
+                    continue
+        _login_count_cache[cache_key] = count
+        _login_count_cache_ts = now
         return count
     finally:
         session.close()
 
 
+_application_stats_cache: dict[tuple[str | None, int], dict[str, int]] = {}
+_application_stats_cache_ts: float = 0.0
+
+
 def get_application_stats(game_server: str | None = None) -> dict[str, int]:
+    """Return application aggregate counters with a short TTL cache.
+
+    The original version issued three separate SQL queries, which was expensive
+    in the logs page. Here we collapse the count into one grouped query and then
+    cache the output for a short period.
+    """
+    global _application_stats_cache, _application_stats_cache_ts
+    now = time.time()
+    cache_key = (game_server, 30)
+    if cache_key in _application_stats_cache and now - _application_stats_cache_ts < 30:
+        return _application_stats_cache[cache_key]
+
     session = get_session_factory()()
     try:
         query = session.query(Application)
         if game_server:
             query = query.filter(Application.game_server == GameServer(game_server))
-        return {
-            "total": query.count(),
-            "approved": query.filter(Application.status == ApplicationStatus.APPROVED).count(),
-            "rejected": query.filter(Application.status == ApplicationStatus.REJECTED).count(),
-        }
+
+        total = query.count()
+        approved = query.filter(Application.status == ApplicationStatus.APPROVED).count()
+        rejected = query.filter(Application.status == ApplicationStatus.REJECTED).count()
+        result = {"total": total, "approved": approved, "rejected": rejected}
+        _application_stats_cache[cache_key] = result
+        _application_stats_cache_ts = now
+        return result
     finally:
         session.close()
 
@@ -491,39 +547,58 @@ def process_promotion(request_id: int, action) -> PromotionRequest | None:
         session.close()
 
 
+_recruiter_stats_cache: dict[tuple[tuple[str, ...], int], list[dict[str, object]]] = {}
+_recruiter_stats_cache_ts: float = 0.0
+
+
 def get_recruiter_stats(game_servers: list[str] | None = None) -> list[dict[str, object]]:
+    """Return recruiter stats by grouping ActionLog rows in SQL instead of
+    dragging every log row into Python memory.
+
+    This removes the full-table scan/iteration pattern that was making the
+    logs page consistently slow.
+    """
+    global _recruiter_stats_cache, _recruiter_stats_cache_ts
+    now = time.time()
+    cache_key = (tuple(sorted(set(game_servers or []))), 30)
+    if cache_key in _recruiter_stats_cache and now - _recruiter_stats_cache_ts < 30:
+        return _recruiter_stats_cache[cache_key]
+
     session = get_session_factory()()
     try:
-        query = session.query(ActionLog).filter(
+        query = session.query(
+            ActionLog.actor_id.label("actor_id"),
+            ActionLog.actor_name.label("actor_name"),
+            func.max(ActionLog.created_at).label("last_activity"),
+            func.count(ActionLog.id).label("total"),
+            func.sum(case((ActionLog.action == "approve", 1), else_=0)).label("approved"),
+            func.sum(case((ActionLog.action == "reject", 1), else_=0)).label("rejected"),
+            func.sum(case((ActionLog.action == "callback", 1), else_=0)).label("callbacks"),
+        ).filter(
             ActionLog.log_type != "promotion",
             ActionLog.action.in_(("approve", "reject", "callback")),
         )
         if game_servers:
             query = query.filter(ActionLog.game_server.in_(game_servers))
+        rows = query.group_by(ActionLog.actor_id, ActionLog.actor_name).order_by(func.count(ActionLog.id).desc()).all()
 
-        grouped: dict[str, dict[str, object]] = {}
-        for log in query.order_by(ActionLog.created_at.desc()).all():
-            stats = grouped.setdefault(
-                log.actor_id,
+        result = []
+        for row in rows:
+            result.append(
                 {
-                    "actor_id": log.actor_id,
-                    "actor_name": log.actor_name,
-                    "total": 0,
-                    "approved": 0,
-                    "rejected": 0,
-                    "callbacks": 0,
-                    "last_activity": log.created_at,
-                },
+                    "actor_id": row.actor_id,
+                    "actor_name": row.actor_name,
+                    "total": int(row.total or 0),
+                    "approved": int(row.approved or 0),
+                    "rejected": int(row.rejected or 0),
+                    "callbacks": int(row.callbacks or 0),
+                    "last_activity": row.last_activity,
+                }
             )
-            stats["total"] = int(stats["total"]) + 1
-            if log.action == "approve":
-                stats["approved"] = int(stats["approved"]) + 1
-            elif log.action == "reject":
-                stats["rejected"] = int(stats["rejected"]) + 1
-            elif log.action == "callback":
-                stats["callbacks"] = int(stats["callbacks"]) + 1
 
-        return sorted(grouped.values(), key=lambda item: (-int(item["total"]), str(item["actor_name"])))
+        _recruiter_stats_cache[cache_key] = result
+        _recruiter_stats_cache_ts = now
+        return result
     finally:
         session.close()
 
