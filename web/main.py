@@ -9,14 +9,14 @@ from urllib.parse import urlencode
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 
 from shared.config import get_config, get_role_id
-from shared.models import init_db
+from shared.models import init_db, ping_database
 from shared.schemas import (
     ApplicationAction,
     ApplicationCreate,
@@ -327,6 +327,27 @@ async def phoenix_logo():
 
 
 @app.middleware("http")
+async def db_healthcheck_middleware(request, call_next):
+    """Perform a cheap DB liveness ping before routing user-facing requests.
+
+    If the configured database responds to a SELECT 1 probe, the request is passed
+    to the normal handling chain. If the DB doesn't answer, the user gets a clear
+    503 error instead of failing in the middle of an action.
+    """
+    path = request.url.path
+    if path.startswith("/static/"):
+        return await call_next(request)
+
+    if not ping_database():
+        return JSONResponse(
+            {"detail": "Database unavailable. The site could not reach the configured database."},
+            status_code=503,
+        )
+
+    return await call_next(request)
+
+
+@app.middleware("http")
 async def static_cache_middleware(request, call_next):
     """Add long cache headers for static assets to improve frontend load times behind a proxy/CDN."""
     response = await call_next(request)
@@ -416,6 +437,11 @@ def _profile_is_approved(user: dict) -> bool:
 
 
 def _default_section_roles(section: str) -> list[int]:
+    # Prefer explicitly configured section role lists (from ENV DISCORD_ROLE_SECTION_...)
+    section_roles = config["discord"].get("section_roles") or {}
+    if section in section_roles and section_roles[section]:
+        return list(section_roles[section])
+
     role_config = config["discord"]["roles"]
     defaults = {
         "applications": ("recruiter_memphis", "recruiter_phoenix", "curator_memphis", "curator_phoenix", "depowner_memphis", "depowner_phoenix", "owner", "chief_moderator"),
